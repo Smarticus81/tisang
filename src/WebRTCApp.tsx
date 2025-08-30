@@ -111,7 +111,7 @@ const WebRTCApp: React.FC = () => {
   const [mouthScale, setMouthScale] = useState(1);
   const [mouthShape, setMouthShape] = useState<MouthShape>('mid');
   const [blink, setBlink] = useState(false);
-  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(false); // Changed to false by default
   const [lastHeard, setLastHeard] = useState('');
   const [lastSimilarity, setLastSimilarity] = useState(0);
   const [pendingWakeStart, setPendingWakeStart] = useState(false);
@@ -166,6 +166,36 @@ const WebRTCApp: React.FC = () => {
     
     setLastSimilarity(Number(best.toFixed(2)));
     return best >= wakeThreshold;
+  }, []);
+
+  // Command detection for returning to wake word mode or shutting down
+  const detectVoiceCommands = useCallback((text: string) => {
+    const cleaned = sanitize(text);
+    
+    // Commands to return to wake word mode
+    const wakeCommands = [
+      'ok bye', 'okay bye', 'bye ti-sang', 'thanks ti-sang', 'thank you ti-sang',
+      'see you later', 'talk to you later', 'goodbye', 'bye bye'
+    ];
+    
+    // Commands to shut down completely
+    const shutdownCommands = [
+      'shut down', 'shutdown', 'stop listening', 'turn off', 'go to sleep'
+    ];
+    
+    for (const cmd of wakeCommands) {
+      if (cleaned.includes(cmd) || similarity(cleaned, cmd) > 0.7) {
+        return 'wake_mode';
+      }
+    }
+    
+    for (const cmd of shutdownCommands) {
+      if (cleaned.includes(cmd) || similarity(cleaned, cmd) > 0.7) {
+        return 'shutdown';
+      }
+    }
+    
+    return null;
   }, []);
 
   // Fetch ephemeral token
@@ -276,6 +306,37 @@ const WebRTCApp: React.FC = () => {
       return { results: data.results };
     } catch {
       return { error: 'News search failed' };
+    }
+  }, []);
+
+  const handleGmailSetup = useCallback(async () => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/auth-url`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { 
+          error: error.error || 'Gmail setup failed',
+          message: 'Gmail credentials not found. Please check the setup guide.'
+        };
+      }
+      
+      const data = await response.json();
+      
+      // Open authentication window
+      window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+      
+      return { 
+        success: true,
+        message: 'Gmail authentication window opened. Please complete the OAuth flow.'
+      };
+    } catch {
+      return { 
+        error: 'Gmail setup failed',
+        message: 'Unable to start Gmail authentication. Please try again.'
+      };
     }
   }, []);
 
@@ -520,6 +581,10 @@ const WebRTCApp: React.FC = () => {
               'Style: Natural, encouraging, with light Gen Z slang. Keep responses concise and upbeat.',
               'Safety: Kid-appropriate content only. No profanity, adult content, or inappropriate slang.',
               '',
+              'VOICE COMMANDS YOU SHOULD RECOGNIZE:',
+              '- Wake word return: "ok bye", "thanks ti-sang", "goodbye" → Acknowledge and return to wake word mode',
+              '- Shutdown: "shut down", "stop listening", "turn off" → Acknowledge and stop all listening',
+              '',
               'CAPABILITIES:',
               '1. Gmail Management:',
               '   - Check new emails: "Check my Gmail" or "Any new emails?"',
@@ -615,6 +680,16 @@ const WebRTCApp: React.FC = () => {
                   },
                   required: ["topic"]
                 }
+              },
+              {
+                type: "function",
+                name: "setup_gmail",
+                description: "Set up Gmail authentication for the user",
+                parameters: {
+                  type: "object",
+                  properties: {},
+                  required: []
+                }
               }
             ]
           }
@@ -692,6 +767,25 @@ const WebRTCApp: React.FC = () => {
                 }, 140);
               }, 120);
             }
+          } else if (data.type === 'conversation.item.input_audio_transcription.completed') {
+            // Check user's speech for commands
+            const transcript = data.transcript || '';
+            if (transcript) {
+              const command = detectVoiceCommands(transcript);
+              if (command === 'wake_mode') {
+                console.log('🔄 Returning to wake word mode');
+                setTimeout(() => {
+                  handleStopListening();
+                  setWakeWordEnabled(true);
+                }, 1000);
+              } else if (command === 'shutdown') {
+                console.log('🛑 Shutting down');
+                setTimeout(() => {
+                  handleStopListening();
+                  setWakeWordEnabled(false);
+                }, 1000);
+              }
+            }
           } else if (data.type === 'response.function_call_arguments.delta') {
             // Handle function call arguments
             console.log('📞 Function call delta:', data);
@@ -717,6 +811,9 @@ const WebRTCApp: React.FC = () => {
                     break;
                   case 'get_news':
                     result = await handleNewsSearch(parsedArgs.topic, parsedArgs.maxResults || 3);
+                    break;
+                  case 'setup_gmail':
+                    result = await handleGmailSetup();
                     break;
                   default:
                     result = { error: `Unknown function: ${name}` };
@@ -792,16 +889,15 @@ const WebRTCApp: React.FC = () => {
       // Stop wake recognition while actively engaged
       stopWakeRecognition();
 
-      console.log('✅ WebRTC connection established with OpenAI Realtime API');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start listening');
-      console.error('WebRTC connection error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [connected, loading, fetchEphemeralToken, stopWakeRecognition, handleGmailCheck, handleGmailSearch, handleWebSearch, handleNewsSearch]);
-
-  // Stop listening and disconnect
+        console.log('✅ WebRTC connection established with OpenAI Realtime API');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to start listening');
+        console.error('WebRTC connection error:', err);
+      } finally {
+        setLoading(false);
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, loading, fetchEphemeralToken, stopWakeRecognition, handleGmailCheck, handleGmailSearch, handleWebSearch, handleNewsSearch, handleGmailSetup, detectVoiceCommands]);  // Stop listening and disconnect
   const handleStopListening = useCallback(() => {
     if (peerConnectionRef.current) {
       peerConnectionRef.current.close();
@@ -915,7 +1011,7 @@ const WebRTCApp: React.FC = () => {
       <TiSangAvatar speaking={speaking} mouthScale={mouthScale} blink={blink} shape={mouthShape} />
       
       <div style={{ marginTop: 20 }}>
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 16 }}>
           <button
             onClick={() => {
               const next = !wakeWordEnabled;
@@ -923,11 +1019,32 @@ const WebRTCApp: React.FC = () => {
               if (next && !listening) startWakeRecognition(); 
               else stopWakeRecognition();
             }}
-            style={{ backgroundColor: wakeWordEnabled ? '#CC5500' : '#aaa' }}
+            style={{ 
+              backgroundColor: wakeWordEnabled ? '#CC5500' : '#aaa',
+              color: '#fff',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              marginRight: '10px'
+            }}
           >
-            Wake Word Detection: {wakeWordEnabled ? 'On' : 'Off'}
+            {wakeWordEnabled ? '🎤 Wake Word: ON' : '⏸️ Wake Word: OFF'}
           </button>
+          
+          {wakeWordEnabled && !listening && (
+            <span style={{ 
+              fontSize: '14px', 
+              color: '#666',
+              fontStyle: 'italic'
+            }}>
+              Say "Ti-sang" to start conversation
+            </span>
+          )}
         </div>
+        
         {!listening ? (
           <button
             onClick={handleStartListening}
@@ -935,18 +1052,43 @@ const WebRTCApp: React.FC = () => {
             style={{
               backgroundColor: loading ? '#ccc' : '#CC5500',
               color: '#fff',
+              border: 'none',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: 'bold',
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Connecting...' : 'Start Listening'}
+            {loading ? 'Connecting...' : '🔗 Start Direct Chat'}
           </button>
         ) : (
-          <button
-            onClick={handleStopListening}
-            style={{ backgroundColor: '#CC5500', color: '#fff' }}
-          >
-            Stop Listening
-          </button>
+          <div>
+            <button
+              onClick={handleStopListening}
+              style={{ 
+                backgroundColor: '#CC5500', 
+                color: '#fff',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                marginRight: '10px'
+              }}
+            >
+              🛑 Stop Listening
+            </button>
+            <div style={{ 
+              marginTop: '10px',
+              fontSize: '14px', 
+              color: '#666',
+              fontStyle: 'italic'
+            }}>
+              Say "ok bye" to return to wake word mode, or "shut down" to stop completely
+            </div>
+          </div>
         )}
       </div>
     </div>

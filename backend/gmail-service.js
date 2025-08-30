@@ -34,7 +34,12 @@ class GmailService {
       const credentials = JSON.parse(await fs.readFile(CREDENTIALS_PATH, 'utf8'));
       const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
       
-      this.auth = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+      // Use our auth redirect endpoint
+      const redirectUri = process.env.NODE_ENV === 'production' 
+        ? 'https://tisang-production.up.railway.app/api/gmail/auth-redirect'
+        : 'http://localhost:3000/api/gmail/auth-redirect';
+      
+      this.auth = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
       // Check if we have a stored token
       try {
