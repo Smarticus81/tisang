@@ -24,14 +24,25 @@ class GmailService {
 
   async initialize() {
     try {
-      // Check if credentials file exists
-      const credentialsExist = await fs.access(CREDENTIALS_PATH).then(() => true).catch(() => false);
-      if (!credentialsExist) {
-        console.log('Gmail credentials not found. Please add gmail-credentials.json to enable Gmail features.');
-        return false;
+      // Prefer credentials from environment for cloud deployments
+      let credentials = null;
+      const credsFromEnv = process.env.GMAIL_CREDENTIALS_JSON;
+      if (credsFromEnv) {
+        try {
+          credentials = JSON.parse(credsFromEnv);
+        } catch (e) {
+          console.error('Failed to parse GMAIL_CREDENTIALS_JSON env var:', e?.message);
+          return false;
+        }
+      } else {
+        // Fallback to credentials file on local/dev
+        const credentialsExist = await fs.access(CREDENTIALS_PATH).then(() => true).catch(() => false);
+        if (!credentialsExist) {
+          console.log('Gmail credentials not found. Provide GMAIL_CREDENTIALS_JSON env var or add backend/gmail-credentials.json.');
+          return false;
+        }
+        credentials = JSON.parse(await fs.readFile(CREDENTIALS_PATH, 'utf8'));
       }
-
-      const credentials = JSON.parse(await fs.readFile(CREDENTIALS_PATH, 'utf8'));
       const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
       
       // Use our auth redirect endpoint
@@ -41,13 +52,23 @@ class GmailService {
       
       this.auth = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
-      // Check if we have a stored token
-      try {
-        const token = await fs.readFile(TOKEN_PATH, 'utf8');
-        this.auth.setCredentials(JSON.parse(token));
-      } catch (err) {
-        console.log('No stored Gmail token found. Gmail features will require authentication.');
-        return false;
+      // Check if we have a stored token (prefer env var for cloud)
+      const tokenFromEnv = process.env.GMAIL_TOKEN_JSON;
+      if (tokenFromEnv) {
+        try {
+          this.auth.setCredentials(JSON.parse(tokenFromEnv));
+        } catch (e) {
+          console.error('Failed to parse GMAIL_TOKEN_JSON env var:', e?.message);
+          return false;
+        }
+      } else {
+        try {
+          const token = await fs.readFile(TOKEN_PATH, 'utf8');
+          this.auth.setCredentials(JSON.parse(token));
+        } catch (err) {
+          console.log('No stored Gmail token found. Gmail features will require authentication.');
+          return false;
+        }
       }
 
       this.gmail = google.gmail({ version: 'v1', auth: this.auth });
@@ -78,8 +99,12 @@ class GmailService {
     const { tokens } = await this.auth.getToken(code);
     this.auth.setCredentials(tokens);
     
-    // Store the token for future use
-    await fs.writeFile(TOKEN_PATH, JSON.stringify(tokens));
+    // Store the token for future use (filesystem; for cloud consider secrets store)
+    try {
+      await fs.writeFile(TOKEN_PATH, JSON.stringify(tokens));
+    } catch (e) {
+      console.warn('Could not persist gmail-token.json to disk. For Railway, set GMAIL_TOKEN_JSON env var with token JSON.');
+    }
     
     this.gmail = google.gmail({ version: 'v1', auth: this.auth });
     return true;
