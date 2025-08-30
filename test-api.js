@@ -1,5 +1,5 @@
-// Test the /api/token endpoint
-fetch('https://tisang.vercel.app/api/token', {
+// Test the Railway /api/token endpoint
+fetch('https://tisang-production.up.railway.app/api/token', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
