@@ -35,7 +35,7 @@ app.post('/api/token', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'gpt-4o-realtime-preview-2024-12-17',
-        voice: 'fable'
+        voice: 'echo'  // Using valid voice from supported list
       })
     });
 
