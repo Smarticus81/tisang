@@ -1,0 +1,10 @@
+{
+  "name": "Ti-Sang",
+  "short_name": "Ti-Sang",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#CC5500",
+  "description": "Realtime speech-to-speech voice agent with Ti-sang avatar."
+}
