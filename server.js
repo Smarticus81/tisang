@@ -27,9 +27,6 @@ gmailService.initialize().then(available => {
   }
 });
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
 // Enable CORS for all routes
 app.use(cors());
 app.use(express.json());
