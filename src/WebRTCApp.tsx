@@ -287,7 +287,12 @@ const WebRTCApp: React.FC = () => {
         console.warn('SpeechRecognition not supported in this browser.');
         return;
       }
-      if (wakeStartingRef.current || wakeRunningRef.current) return;
+      
+      // Prevent multiple instances
+      if (wakeStartingRef.current || wakeRunningRef.current || recognizerRef.current) {
+        console.log('Wake recognition already running or starting');
+        return;
+      }
 
       const recognition = new SpeechRec();
       recognition.continuous = true;
@@ -295,17 +300,21 @@ const WebRTCApp: React.FC = () => {
       recognition.lang = 'en-US';
       wakeShouldRunRef.current = true;
 
+      // Clear any existing timeouts
       if (wakeRestartTimeoutRef.current) {
         window.clearTimeout(wakeRestartTimeoutRef.current);
         wakeRestartTimeoutRef.current = null;
       }
 
       recognition.onstart = () => {
+        console.log('✅ Wake word recognition started');
         wakeStartingRef.current = false;
         wakeRunningRef.current = true;
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
+        if (!wakeShouldRunRef.current) return; // Ignore results if we're shutting down
+        
         const results = event.results;
         const idx = event.resultIndex;
         const transcript = results[idx][0].transcript;
@@ -317,7 +326,7 @@ const WebRTCApp: React.FC = () => {
           const onCooldown = now - lastWakeTimeRef.current < 3000;
           if (!onCooldown && detectWakeWord(transcript)) {
             lastWakeTimeRef.current = now;
-            console.log('Wake word detected.');
+            console.log('🎯 Wake word detected:', transcript);
             shouldGreetOnConnectRef.current = true;
             setPendingWakeStart(true);
           }
@@ -325,55 +334,99 @@ const WebRTCApp: React.FC = () => {
       };
 
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-        console.warn('SpeechRecognition error:', e);
+        console.warn('⚠️ SpeechRecognition error:', e.error, e.message);
         wakeRunningRef.current = false;
-        const recoverable = e.error === 'no-speech' || e.error === 'aborted' || e.error === 'network';
-        if (recoverable && wakeShouldRunRef.current && !listening) {
+        
+        // Only restart for recoverable errors and if we should still be running
+        const recoverable = e.error === 'no-speech' || e.error === 'network';
+        const shouldRestart = recoverable && wakeShouldRunRef.current && !listening && wakeWordEnabled;
+        
+        if (e.error === 'aborted') {
+          // Don't restart on aborted - this usually means we're stopping intentionally
+          console.log('🛑 Speech recognition aborted - not restarting');
+          return;
+        }
+        
+        if (shouldRestart) {
+          // Longer delay to prevent rapid restart cycles
           if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
           wakeRestartTimeoutRef.current = window.setTimeout(() => {
-            try { recognition.start(); wakeStartingRef.current = true; } catch { /* noop */ }
-          }, 800);
+            if (wakeShouldRunRef.current && !listening && !recognizerRef.current) {
+              console.log('🔄 Restarting wake recognition after error');
+              startWakeRecognition();
+            }
+          }, 1500); // Increased delay to 1.5 seconds
         }
       };
 
       recognition.onend = () => {
+        console.log('🔚 Wake recognition ended');
         wakeRunningRef.current = false;
+        
+        // Only restart if we should still be running
         if (wakeWordEnabled && wakeShouldRunRef.current && !listening) {
           if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
           wakeRestartTimeoutRef.current = window.setTimeout(() => {
-            try { recognition.start(); wakeStartingRef.current = true; } catch { /* noop */ }
-          }, 600);
+            if (wakeShouldRunRef.current && !listening && !recognizerRef.current) {
+              console.log('🔄 Restarting wake recognition after end');
+              startWakeRecognition();
+            }
+          }, 1000); // 1 second delay for normal restart
         }
       };
 
       recognizerRef.current = recognition;
-      try { wakeStartingRef.current = true; recognition.start(); } catch { /* noop */ }
-      console.log('Wake word recognition started');
+      
+      try { 
+        wakeStartingRef.current = true; 
+        recognition.start(); 
+      } catch (error) {
+        console.error('❌ Failed to start recognition:', error);
+        wakeStartingRef.current = false;
+        recognizerRef.current = null;
+      }
+      
     } catch (e) {
-      console.warn('Failed to start wake recognition:', e);
+      console.warn('❌ Failed to start wake recognition:', e);
+      wakeStartingRef.current = false;
     }
   }, [wakeWordEnabled, listening, detectWakeWord]);
 
   const stopWakeRecognition = useCallback(() => {
+    console.log('🛑 Stopping wake recognition');
     const rec = recognizerRef.current;
+    
+    // Stop should run flag first to prevent restarts
+    wakeShouldRunRef.current = false;
+    
+    // Clear any pending restart timeouts
+    if (wakeRestartTimeoutRef.current) { 
+      window.clearTimeout(wakeRestartTimeoutRef.current); 
+      wakeRestartTimeoutRef.current = null; 
+    }
+    
     if (rec) {
       try {
-        wakeShouldRunRef.current = false;
-        if (wakeRestartTimeoutRef.current) { 
-          window.clearTimeout(wakeRestartTimeoutRef.current); 
-          wakeRestartTimeoutRef.current = null; 
-        }
+        // Clear event handlers to prevent callbacks during shutdown
         rec.onresult = null; 
         rec.onend = null; 
         rec.onerror = null; 
-        (rec as any).onstart = null;
+        rec.onstart = null;
+        
+        // Stop the recognition
         rec.stop();
-      } catch { /* noop */ }
+      } catch (error) {
+        console.warn('⚠️ Error stopping recognition:', error);
+      }
+      
       recognizerRef.current = null;
-      wakeRunningRef.current = false;
-      wakeStartingRef.current = false;
-      console.log('Wake word recognition stopped');
     }
+    
+    // Reset state flags
+    wakeRunningRef.current = false;
+    wakeStartingRef.current = false;
+    
+    console.log('✅ Wake word recognition stopped');
   }, []);
 
   // WebRTC connection using OpenAI documentation method
