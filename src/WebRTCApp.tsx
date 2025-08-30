@@ -483,6 +483,7 @@ const WebRTCApp: React.FC = () => {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/sdp",
+          "OpenAI-Beta": "realtime=v1",
         },
       });
 

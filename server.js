@@ -25,7 +25,7 @@ app.post('/api/token', async (req, res) => {
       });
     }
 
-    // Use the OpenAI Realtime API to get an ephemeral token
+    // Use the OpenAI Realtime API to get an ephemeral token for WebRTC
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
       method: 'POST',
       headers: {
@@ -34,8 +34,8 @@ app.post('/api/token', async (req, res) => {
         'OpenAI-Beta': 'realtime=v1'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-realtime-preview-2024-12-17',
-        voice: 'echo'  // Using valid voice from supported list
+        model: 'gpt-realtime',
+        voice: 'echo'
       })
     });
 
