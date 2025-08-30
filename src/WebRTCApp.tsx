@@ -68,11 +68,10 @@ const similarity = (a: string, b: string) => {
   return 1 - dist / maxLen;
 };
 
-const WAKE_WORD = 'tisang';
-const wakeThreshold = 0.5;
-const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
-const PRIMARY_USER_NAME = 'Atticus';
-const WAKE_GREETING = `Hi ${PRIMARY_USER_NAME}, I'm ti-sang. How can I help?`;
+const WAKE_WORDS = ['tisang', 'ti-sang', 'ti sang', 'hey tisang', 'hey ti-sang'];
+const wakeThreshold = 0.6;
+const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
+const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
 type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
@@ -141,14 +140,30 @@ const WebRTCApp: React.FC = () => {
   // Wake word detection
   const detectWakeWord = useCallback((text: string) => {
     const cleaned = sanitize(text);
-    let best = similarity(cleaned, WAKE_WORD);
-    const len = WAKE_WORD.length;
-    for (let w = Math.max(2, len - 2); w <= len + 2; w++) {
-      for (let i = 0; i + w <= cleaned.length; i++) {
-        const chunk = cleaned.slice(i, i + w);
-        best = Math.max(best, similarity(chunk, WAKE_WORD));
+    let best = 0;
+    
+    // Check against all wake words
+    for (const wakeWord of WAKE_WORDS) {
+      const cleanWake = sanitize(wakeWord);
+      let currentBest = similarity(cleaned, cleanWake);
+      
+      // Also check substrings
+      const len = cleanWake.length;
+      for (let w = Math.max(3, len - 2); w <= len + 3; w++) {
+        for (let i = 0; i + w <= cleaned.length; i++) {
+          const chunk = cleaned.slice(i, i + w);
+          currentBest = Math.max(currentBest, similarity(chunk, cleanWake));
+        }
       }
+      
+      // Check if wake word appears as substring with word boundaries
+      if (cleaned.includes(cleanWake.replace(/\s/g, ''))) {
+        currentBest = Math.max(currentBest, 0.85);
+      }
+      
+      best = Math.max(best, currentBest);
     }
+    
     setLastSimilarity(Number(best.toFixed(2)));
     return best >= wakeThreshold;
   }, []);
@@ -177,6 +192,91 @@ const WebRTCApp: React.FC = () => {
     const expiresAt: number | undefined = data.expires_at ?? data?.client_secret?.expires_at;
     tokenRef.current = { value, expiresAt };
     return value;
+  }, []);
+
+  // API handler functions
+  const handleGmailCheck = useCallback(async (maxResults: number = 5) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/emails?maxResults=${maxResults}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to check Gmail' };
+      }
+      
+      const data = await response.json();
+      return { emails: data.emails };
+    } catch {
+      return { error: 'Gmail check failed' };
+    }
+  }, []);
+
+  const handleGmailSearch = useCallback(async (query: string, maxResults: number = 5) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, maxResults })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Gmail search failed' };
+      }
+      
+      const data = await response.json();
+      return { emails: data.emails };
+    } catch {
+      return { error: 'Gmail search failed' };
+    }
+  }, []);
+
+  const handleWebSearch = useCallback(async (query: string, maxResults: number = 5) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, maxResults })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Web search failed' };
+      }
+      
+      const data = await response.json();
+      return { results: data.results };
+    } catch {
+      return { error: 'Web search failed' };
+    }
+  }, []);
+
+  const handleNewsSearch = useCallback(async (topic: string, maxResults: number = 3) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/news`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, maxResults })
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'News search failed' };
+      }
+      
+      const data = await response.json();
+      return { results: data.results };
+    } catch {
+      return { error: 'News search failed' };
+    }
   }, []);
 
   // Wake word recognition
@@ -362,33 +462,108 @@ const WebRTCApp: React.FC = () => {
           type: "session.update",
           session: {
             instructions: [
-              'You are a friendly, encouraging voice assistant named ti-sang for Atticus, age 12.',
-              'Style: use kid-safe Gen Z slang lightly and naturally; keep sentences short and positive.',
-              'Never use profanity, explicit or adult content. Avoid sexualized slang. Do not use "Gyat".',
-              'Be inclusive and kind. If the topic is serious or sensitive, switch to clear, supportive, age-appropriate language.',
-              'Primary user: Atticus (12). Use the name "Atticus" naturally in greetings or when it helps clarity; do not ask for their age.',
-              'Glossary to optionally sprinkle in (when it fits):',
-              '- rizz = charisma/charm (use in friendly, non-romantic ways).',
-              '- bet = OK/for sure.',
-              '- cap/no cap = lie / for real.',
-              '- bussin\' = very good (esp. food).',
-              '- drip = cool outfit/style.',
-              "- it's giving ... = the vibe is ...",
-              '- slay / ate that up = did great.',
-              '- finna = going to (use sparingly).',
-              '- based = confidently yourself (kind and respectful).',
-              '- delulu = playful, unrealistic thinking (avoid being mean).',
-              '- let him/her cook = let them focus/do their thing.',
-              '- NPC = acting generic (avoid labeling people directly).',
-              '- Fanum tax = taking a bite from a friend (playful).',
-              '- looksmaxxing/mewing = self-care/growth; keep neutral, healthy framing.',
-              '- skibidi = silly/cringe (avoid bullying).',
-              'Examples:',
-              'Formal: "Okay, that plan sounds good." → Slang: "Bet, that plan works."',
-              'Formal: "You did an amazing job." → "You slayed that. Ate it up, no cap."',
-              'Formal: "Those shoes look nice." → "The drip is clean. It\'s giving main character."',
-              'Identity: Always refer to yourself as ti-sang.',
-            ].join('\n')
+              'You are ti-sang, a friendly voice assistant with Gmail access and web search capabilities.',
+              'User: 12-year-old, friendly and curious. Use their name (Atticus) only when greeting or when it adds clarity - avoid overusing it.',
+              'Style: Natural, encouraging, with light Gen Z slang. Keep responses concise and upbeat.',
+              'Safety: Kid-appropriate content only. No profanity, adult content, or inappropriate slang.',
+              '',
+              'CAPABILITIES:',
+              '1. Gmail Management:',
+              '   - Check new emails: "Check my Gmail" or "Any new emails?"',
+              '   - Read specific emails: "Read my latest email" or "What\'s in my inbox?"', 
+              '   - Send emails: "Send an email to [person] about [topic]"',
+              '   - Search emails: "Find emails from [person]" or "Search for [keyword]"',
+              '',
+              '2. Web Search:',
+              '   - General search: "Search for [topic]" or "Look up [information]"',
+              '   - News: "What\'s the latest news about [topic]?"',
+              '   - Facts: "Tell me about [subject]" or "How does [thing] work?"',
+              '',
+              'Gen Z slang to use naturally (when appropriate):',
+              '- bet = okay/for sure',
+              '- no cap = for real/seriously', 
+              '- bussin = really good (especially food)',
+              '- slay/ate that up = did amazing',
+              '- it\'s giving... = the vibe is...',
+              '- based = being confidently yourself',
+              '- let them cook = let them do their thing',
+              '',
+              'AVOID: Overusing names, asking for age, inappropriate slang like "gyat", being overly formal.',
+              'FOCUS: Be helpful, encouraging, and naturally conversational.'
+            ].join('\n'),
+            tools: [
+              {
+                type: "function",
+                name: "check_gmail",
+                description: "Check recent Gmail emails",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    maxResults: {
+                      type: "number",
+                      description: "Maximum number of emails to retrieve (default: 5)"
+                    }
+                  }
+                }
+              },
+              {
+                type: "function", 
+                name: "search_gmail",
+                description: "Search Gmail for specific emails",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: {
+                      type: "string",
+                      description: "Gmail search query (e.g., 'from:friend@email.com', 'subject:important')"
+                    },
+                    maxResults: {
+                      type: "number",
+                      description: "Maximum number of results (default: 5)"
+                    }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "web_search", 
+                description: "Search the internet for information",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: {
+                      type: "string",
+                      description: "Search query"
+                    },
+                    maxResults: {
+                      type: "number", 
+                      description: "Maximum number of results (default: 5)"
+                    }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_news",
+                description: "Get recent news about a topic",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    topic: {
+                      type: "string",
+                      description: "News topic to search for"
+                    },
+                    maxResults: {
+                      type: "number",
+                      description: "Maximum number of news items (default: 3)"
+                    }
+                  },
+                  required: ["topic"]
+                }
+              }
+            ]
           }
         };
         dataChannel.send(JSON.stringify(sessionUpdateEvent));
@@ -464,6 +639,64 @@ const WebRTCApp: React.FC = () => {
                 }, 140);
               }, 120);
             }
+          } else if (data.type === 'response.function_call_arguments.delta') {
+            // Handle function call arguments
+            console.log('📞 Function call delta:', data);
+          } else if (data.type === 'response.function_call_arguments.done') {
+            // Function call complete - execute the function
+            const { call_id, name, arguments: args } = data;
+            console.log('📞 Function call:', name, args);
+            
+            (async () => {
+              try {
+                let result = null;
+                const parsedArgs = JSON.parse(args || '{}');
+                
+                switch (name) {
+                  case 'check_gmail':
+                    result = await handleGmailCheck(parsedArgs.maxResults || 5);
+                    break;
+                  case 'search_gmail':
+                    result = await handleGmailSearch(parsedArgs.query, parsedArgs.maxResults || 5);
+                    break;
+                  case 'web_search':
+                    result = await handleWebSearch(parsedArgs.query, parsedArgs.maxResults || 5);
+                    break;
+                  case 'get_news':
+                    result = await handleNewsSearch(parsedArgs.topic, parsedArgs.maxResults || 3);
+                    break;
+                  default:
+                    result = { error: `Unknown function: ${name}` };
+                }
+                
+                // Send function result back
+                const responseEvent = {
+                  type: "conversation.item.create",
+                  item: {
+                    type: "function_call_output",
+                    call_id,
+                    output: JSON.stringify(result)
+                  }
+                };
+                dataChannel.send(JSON.stringify(responseEvent));
+                
+                // Continue the response
+                const continueEvent = { type: "response.create" };
+                dataChannel.send(JSON.stringify(continueEvent));
+                
+              } catch (error) {
+                console.error('Function call error:', error);
+                const errorEvent = {
+                  type: "conversation.item.create",
+                  item: {
+                    type: "function_call_output", 
+                    call_id,
+                    output: JSON.stringify({ error: (error as Error).message || 'Unknown error' })
+                  }
+                };
+                dataChannel.send(JSON.stringify(errorEvent));
+              }
+            })();
           }
         } catch (e) {
           console.warn('Failed to parse event:', e);
@@ -513,7 +746,7 @@ const WebRTCApp: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [connected, loading, fetchEphemeralToken, stopWakeRecognition]);
+  }, [connected, loading, fetchEphemeralToken, stopWakeRecognition, handleGmailCheck, handleGmailSearch, handleWebSearch, handleNewsSearch]);
 
   // Stop listening and disconnect
   const handleStopListening = useCallback(() => {
@@ -639,7 +872,7 @@ const WebRTCApp: React.FC = () => {
             }}
             style={{ backgroundColor: wakeWordEnabled ? '#CC5500' : '#aaa' }}
           >
-            Wake Word (Ti-sang): {wakeWordEnabled ? 'On' : 'Off'}
+            Wake Word Detection: {wakeWordEnabled ? 'On' : 'Off'}
           </button>
         </div>
         {!listening ? (
