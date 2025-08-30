@@ -476,7 +476,7 @@ const WebRTCApp: React.FC = () => {
 
       // Send offer to OpenAI Realtime API using WebRTC
       const baseUrl = "https://api.openai.com/v1/realtime/calls";
-      const model = "gpt-4o-realtime-preview-2024-12-17";
+      const model = "gpt-realtime";
       const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
         method: "POST",
         body: offer.sdp,
