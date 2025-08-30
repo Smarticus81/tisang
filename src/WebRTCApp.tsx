@@ -86,11 +86,26 @@ const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: b
   return (
     <div style={{ display: 'inline-block', textAlign: 'center', position: 'relative' }}>
       <svg className="ti-sang-svg" width="280" height="280" viewBox="0 0 280 280" aria-label="Ti-sang avatar">
+        {/* Face */}
         <circle cx="140" cy="140" r="100" fill="#FFFFFF" stroke={ORANGE} strokeWidth="6" />
+        
+        {/* Hair */}
+        <path 
+          d="M 60 120 Q 80 50 140 40 Q 200 50 220 120 Q 210 90 180 80 Q 140 70 100 80 Q 70 90 60 120" 
+          fill={ORANGE} 
+          opacity="0.8"
+        />
+        <circle cx="75" cy="95" r="12" fill={ORANGE} opacity="0.6" />
+        <circle cx="205" cy="95" r="12" fill={ORANGE} opacity="0.6" />
+        <circle cx="140" cy="75" r="8" fill={ORANGE} opacity="0.7" />
+        
+        {/* Eyes */}
         <g className={`eyes ${blink ? 'blink' : ''}`}> 
           <circle cx="110" cy="125" r="6" fill={ORANGE} />
           <circle cx="170" cy="125" r="6" fill={ORANGE} />
         </g>
+        
+        {/* Mouth */}
         <ellipse
           className="mouth"
           cx="140" cy="180" rx={base.rx} ry={base.ry}
@@ -112,9 +127,8 @@ const WebRTCApp: React.FC = () => {
   const [mouthShape, setMouthShape] = useState<MouthShape>('mid');
   const [blink, setBlink] = useState(false);
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false); // Changed to false by default
-  const [lastHeard, setLastHeard] = useState('');
-  const [lastSimilarity, setLastSimilarity] = useState(0);
   const [pendingWakeStart, setPendingWakeStart] = useState(false);
+  const [gmailStatus, setGmailStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
 
   // Refs
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -164,33 +178,37 @@ const WebRTCApp: React.FC = () => {
       best = Math.max(best, currentBest);
     }
     
-    setLastSimilarity(Number(best.toFixed(2)));
     return best >= wakeThreshold;
   }, []);
 
   // Command detection for returning to wake word mode or shutting down
   const detectVoiceCommands = useCallback((text: string) => {
     const cleaned = sanitize(text);
+    console.log('🔍 Checking command in:', cleaned);
     
     // Commands to return to wake word mode
     const wakeCommands = [
       'ok bye', 'okay bye', 'bye ti-sang', 'thanks ti-sang', 'thank you ti-sang',
-      'see you later', 'talk to you later', 'goodbye', 'bye bye'
+      'see you later', 'talk to you later', 'goodbye', 'bye bye', 'bye', 'thanks'
     ];
     
     // Commands to shut down completely
     const shutdownCommands = [
-      'shut down', 'shutdown', 'stop listening', 'turn off', 'go to sleep'
+      'shut down', 'shutdown', 'stop listening', 'turn off', 'go to sleep', 'stop'
     ];
     
     for (const cmd of wakeCommands) {
-      if (cleaned.includes(cmd) || similarity(cleaned, cmd) > 0.7) {
+      const cmdClean = sanitize(cmd);
+      if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
+        console.log('✅ Wake mode command detected:', cmd);
         return 'wake_mode';
       }
     }
     
     for (const cmd of shutdownCommands) {
-      if (cleaned.includes(cmd) || similarity(cleaned, cmd) > 0.7) {
+      const cmdClean = sanitize(cmd);
+      if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
+        console.log('✅ Shutdown command detected:', cmd);
         return 'shutdown';
       }
     }
@@ -340,6 +358,63 @@ const WebRTCApp: React.FC = () => {
     }
   }, []);
 
+  // Check Gmail status
+  const checkGmailStatus = useCallback(async () => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/status`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGmailStatus(data.gmail ? 'available' : 'unavailable');
+      } else {
+        setGmailStatus('unavailable');
+      }
+    } catch {
+      setGmailStatus('unavailable');
+    }
+  }, []);
+
+  // Manual Gmail setup trigger
+  const triggerGmailSetup = useCallback(async () => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/auth-url`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.setup_url) {
+          // Open setup guide
+          window.open(`${base}/gmail-setup`, 'gmail-setup', 'width=900,height=700,scrollbars=yes,resizable=yes');
+        } else {
+          alert('Gmail setup failed: ' + (error.error || 'Unknown error'));
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      
+      // Open authentication window
+      const authWindow = window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+      
+      // Check if window was closed and refresh status
+      const checkClosed = setInterval(() => {
+        if (authWindow?.closed) {
+          clearInterval(checkClosed);
+          setTimeout(() => {
+            checkGmailStatus();
+          }, 1000);
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Gmail setup error:', error);
+      alert('Failed to start Gmail setup. Please try again.');
+    }
+  }, [checkGmailStatus]);
+
   // Wake word recognition
   const startWakeRecognition = useCallback(() => {
     try {
@@ -380,7 +455,6 @@ const WebRTCApp: React.FC = () => {
         const idx = event.resultIndex;
         const transcript = results[idx][0].transcript;
         const confidence = results[idx][0].confidence;
-        setLastHeard(transcript);
         
         if (results[idx].isFinal || (confidence ?? 0) > 0.7) {
           const now = Date.now();
@@ -771,6 +845,7 @@ const WebRTCApp: React.FC = () => {
             // Check user's speech for commands
             const transcript = data.transcript || '';
             if (transcript) {
+              console.log('🎤 User transcript:', transcript);
               const command = detectVoiceCommands(transcript);
               if (command === 'wake_mode') {
                 console.log('🔄 Returning to wake word mode');
@@ -780,6 +855,30 @@ const WebRTCApp: React.FC = () => {
                 }, 1000);
               } else if (command === 'shutdown') {
                 console.log('🛑 Shutting down');
+                setTimeout(() => {
+                  handleStopListening();
+                  setWakeWordEnabled(false);
+                }, 1000);
+              }
+            }
+          } else if (data.type === 'input_audio_buffer.committed') {
+            // Also check when audio buffer is committed - this happens after speech
+            // This provides an additional detection point for commands
+            console.log('🎤 Audio buffer committed - checking for commands');
+          } else if (data.type === 'conversation.item.created' && data.item?.type === 'message' && data.item?.role === 'user') {
+            // Check user messages for commands
+            const content = data.item?.content?.[0]?.text || '';
+            if (content) {
+              console.log('💬 User message:', content);
+              const command = detectVoiceCommands(content);
+              if (command === 'wake_mode') {
+                console.log('🔄 Returning to wake word mode (from message)');
+                setTimeout(() => {
+                  handleStopListening();
+                  setWakeWordEnabled(true);
+                }, 1000);
+              } else if (command === 'shutdown') {
+                console.log('🛑 Shutting down (from message)');
                 setTimeout(() => {
                   handleStopListening();
                   setWakeWordEnabled(false);
@@ -966,9 +1065,12 @@ const WebRTCApp: React.FC = () => {
   // Prefetch token on mount
   useEffect(() => {
     (async () => {
-      try { await fetchEphemeralToken(); } catch { /* noop */ }
+      try { 
+        await fetchEphemeralToken();
+        await checkGmailStatus();
+      } catch { /* noop */ }
     })();
-  }, [fetchEphemeralToken]);
+  }, [fetchEphemeralToken, checkGmailStatus]);
 
   return (
     <div className="App" style={{ textAlign: 'center', marginTop: 40 }}>
@@ -986,27 +1088,6 @@ const WebRTCApp: React.FC = () => {
           Error: {error}
         </div>
       )}
-
-      {/* Debug overlay */}
-      <div style={{
-        position: 'fixed',
-        top: 10,
-        right: 10,
-        background: 'rgba(0,0,0,0.8)',
-        color: 'white',
-        padding: '10px',
-        borderRadius: '5px',
-        fontSize: '12px',
-        zIndex: 1000
-      }}>
-        Mouth Scale: {mouthScale.toFixed(2)}<br/>
-        Speaking: {speaking ? 'Yes' : 'No'}<br/>
-        Connected: {connected ? 'Yes' : 'No'}<br/>
-        Wake: {wakeWordEnabled ? 'On' : 'Off'}<br/>
-        Heard: {lastHeard || '-'}<br/>
-        Sim: {lastSimilarity.toFixed(2)}<br/>
-        Shape: {mouthShape}
-      </div>
 
       <TiSangAvatar speaking={speaking} mouthScale={mouthScale} blink={blink} shape={mouthShape} />
       
@@ -1090,6 +1171,73 @@ const WebRTCApp: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Gmail Setup Section */}
+      <div style={{ 
+        marginTop: 30, 
+        padding: 20, 
+        backgroundColor: '#f8f8f8', 
+        borderRadius: 10,
+        maxWidth: 400,
+        margin: '30px auto 0'
+      }}>
+        <h3 style={{ color: '#CC5500', margin: '0 0 15px 0', textAlign: 'center' }}>
+          📧 Gmail Integration
+        </h3>
+        
+        <div style={{ textAlign: 'center' }}>
+          {gmailStatus === 'available' ? (
+            <div style={{ color: '#28a745' }}>
+              ✅ Gmail is connected and ready!
+              <br />
+              <small style={{ color: '#666', fontSize: '12px' }}>
+                Try saying "Check my Gmail" or "Any new emails?"
+              </small>
+            </div>
+          ) : gmailStatus === 'unavailable' ? (
+            <div>
+              <div style={{ color: '#666', marginBottom: 10 }}>
+                Gmail not set up yet
+              </div>
+              <button
+                onClick={triggerGmailSetup}
+                style={{
+                  backgroundColor: '#1a73e8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '5px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  marginRight: '10px'
+                }}
+              >
+                🔗 Set Up Gmail
+              </button>
+              <button
+                onClick={() => window.open('/gmail-setup', 'gmail-setup', 'width=900,height=700,scrollbars=yes,resizable=yes')}
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '5px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                📖 Setup Guide
+              </button>
+            </div>
+          ) : (
+            <div style={{ color: '#666' }}>
+              Checking Gmail status...
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
