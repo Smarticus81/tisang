@@ -10,41 +10,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!openaiApiKey) {
       return res.status(500).json({ error: 'OPENAI_API_KEY not configured', code: 'CONFIG_MISSING' });
     }
-    // Try multiple compatible endpoints to mint an ephemeral client token
-    const attempts: Array<{
-      url: string;
-      headers: Record<string, string>;
-      body: unknown;
-    }> = [
-      {
-        // Agents Realtime client secret endpoint
-        url: 'https://api.openai.com/v1/realtime/client_secrets',
-        headers: {
-          Authorization: `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: {
-          session: {
-            type: 'realtime',
-            model: 'gpt-realtime',
-            audio: { output: { voice: 'fable' } },
-          },
-        },
-      },
-      {
-        // Generic Realtime sessions API (provides client_secret in response)
+    // Try multiple compatible endpoints and model names to mint an ephemeral client token
+    const models = [
+      'gpt-4o-realtime-preview-2024-12-17',
+      'gpt-4o-realtime-preview',
+      'gpt-realtime',
+    ];
+    type Attempt = { url: string; headers: Record<string, string>; body: unknown };
+    const attempts: Attempt[] = [];
+    for (const model of models) {
+      // Preferred: sessions endpoint (returns client_secret)
+      attempts.push({
         url: 'https://api.openai.com/v1/realtime/sessions',
         headers: {
           Authorization: `Bearer ${openaiApiKey}`,
           'Content-Type': 'application/json',
+          Accept: 'application/json',
           'OpenAI-Beta': 'realtime=v1',
         },
-        body: {
-          model: 'gpt-realtime',
-          audio: { voice: 'fable' },
+        body: { model, voice: 'fable' },
+      });
+      // Fallback: client_secrets endpoint
+      attempts.push({
+        url: 'https://api.openai.com/v1/realtime/client_secrets',
+        headers: {
+          Authorization: `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'OpenAI-Beta': 'realtime=v1',
         },
-      },
-    ];
+        body: { model, voice: 'fable' },
+      });
+    }
 
   let lastErr: unknown = null;
     for (const attempt of attempts) {
@@ -54,13 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           headers: attempt.headers,
           body: JSON.stringify(attempt.body),
         });
-        const data = await resp.json().catch(() => null);
+  const data = await resp.json().catch(() => null);
         if (!resp.ok) {
           lastErr = { status: resp.status, data };
           continue;
         }
-        const token = (data && (data.client_secret?.value ?? data.value)) as string | undefined;
-        const expires_at = (data && (data.client_secret?.expires_at ?? data.expires_at)) as number | undefined;
+  const token = (data && (data.client_secret?.value ?? data.value)) as string | undefined;
+  const expires_at = (data && (data.client_secret?.expires_at ?? data.expires_at)) as number | undefined;
         if (!token) {
           lastErr = { status: resp.status, data };
           continue;
