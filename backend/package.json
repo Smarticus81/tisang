@@ -1,6 +1,7 @@
 {
   "name": "voice-agent-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend for voice agent with ephemeral token generation",
   "main": "server.js",
   "scripts": {
