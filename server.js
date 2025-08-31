@@ -166,6 +166,30 @@ app.post('/api/gmail/search', async (req, res) => {
   }
 });
 
+// Send email
+app.post('/api/gmail/send', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Gmail not authenticated' });
+    const { to, subject, text, cc, bcc } = req.body;
+    const result = await gmailService.sendEmail({ to, subject, text, cc, bcc });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Create calendar event
+app.post('/api/calendar/events', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Google not authenticated' });
+    const { summary, description, start, end, timezone } = req.body;
+    const result = await gmailService.createCalendarEvent({ summary, description, start, end, timezone });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Search API routes
 app.post('/api/search', async (req, res) => {
   try {

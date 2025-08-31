@@ -358,6 +358,46 @@ const WebRTCApp: React.FC = () => {
     }
   }, []);
 
+  const handleSendEmail = useCallback(async (args: { to: string; subject: string; text: string; cc?: string; bcc?: string; }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to send email' };
+      }
+      const data = await response.json();
+      return { success: true, id: data.result?.id };
+    } catch {
+      return { error: 'Failed to send email' };
+    }
+  }, []);
+
+  const handleCreateCalendarEvent = useCallback(async (args: { summary: string; description?: string; start: { date?: string; dateTime?: string }; end: { date?: string; dateTime?: string }; timezone?: string; }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/calendar/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to create calendar event' };
+      }
+      const data = await response.json();
+      return { success: true, id: data.result?.id, link: data.result?.htmlLink };
+    } catch {
+      return { error: 'Failed to create calendar event' };
+    }
+  }, []);
+
   // Check Gmail status
   const checkGmailStatus = useCallback(async () => {
     try {
@@ -588,7 +628,13 @@ const WebRTCApp: React.FC = () => {
         
         // Set up audio analysis for lip-sync
         try {
-          const audioContext = audioContextRef.current || new (window.AudioContext || (window as any).webkitAudioContext)();
+          const AudioCtor =
+            window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          const audioContext = audioContextRef.current || (AudioCtor ? new AudioCtor() : undefined);
+          if (!audioContext) {
+            console.error('No AudioContext support in this browser');
+            return;
+          }
           if (!audioContextRef.current) audioContextRef.current = audioContext;
           
           const source = audioContext.createMediaElementSource(audioElement);
@@ -764,6 +810,52 @@ const WebRTCApp: React.FC = () => {
                   properties: {},
                   required: []
                 }
+              },
+              {
+                type: "function",
+                name: "send_email",
+                description: "Send an email via Gmail",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    to: { type: "string", description: "Recipient email address" },
+                    subject: { type: "string", description: "Email subject" },
+                    text: { type: "string", description: "Plain text body" },
+                    cc: { type: "string", description: "CC recipients (optional)" },
+                    bcc: { type: "string", description: "BCC recipients (optional)" }
+                  },
+                  required: ["to", "subject", "text"]
+                }
+              },
+              {
+                type: "function",
+                name: "create_calendar_event",
+                description: "Create a Google Calendar event",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    summary: { type: "string", description: "Event title" },
+                    description: { type: "string", description: "Event description" },
+                    start: {
+                      type: "object",
+                      description: "Start time/date. Provide either date (YYYY-MM-DD) or dateTime (ISO).",
+                      properties: {
+                        date: { type: "string" },
+                        dateTime: { type: "string" }
+                      }
+                    },
+                    end: {
+                      type: "object",
+                      description: "End time/date. Provide either date (YYYY-MM-DD) or dateTime (ISO).",
+                      properties: {
+                        date: { type: "string" },
+                        dateTime: { type: "string" }
+                      }
+                    },
+                    timezone: { type: "string", description: "IANA timezone, e.g., America/New_York" }
+                  },
+                  required: ["summary", "start", "end"]
+                }
               }
             ]
           }
@@ -904,6 +996,12 @@ const WebRTCApp: React.FC = () => {
                     break;
                   case 'search_gmail':
                     result = await handleGmailSearch(parsedArgs.query, parsedArgs.maxResults || 5);
+                    break;
+                  case 'send_email':
+                    result = await handleSendEmail(parsedArgs);
+                    break;
+                  case 'create_calendar_event':
+                    result = await handleCreateCalendarEvent(parsedArgs);
                     break;
                   case 'web_search':
                     result = await handleWebSearch(parsedArgs.query, parsedArgs.maxResults || 5);
