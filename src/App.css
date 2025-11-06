@@ -41,59 +41,245 @@
   color: #888;
 }
 
-/* Premium Ti-sang avatar styles */
+/* SOTA Avatar Container */
+.avatar-container {
+  display: inline-block;
+  position: relative;
+  margin: 20px auto;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avatar-container:hover {
+  transform: scale(1.05);
+}
+
+.avatar-container.speaking {
+  animation: gentle-float 3s ease-in-out infinite;
+}
+
+/* Avatar SVG */
 .ti-sang-svg {
   display: block;
   margin: 0 auto;
-  filter: drop-shadow(0 8px 25px rgba(0,0,0,0.15));
+  filter: drop-shadow(0 15px 40px rgba(204, 85, 0, 0.2));
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.avatar-container.speaking .ti-sang-svg {
+  filter: drop-shadow(0 20px 60px rgba(204, 85, 0, 0.35));
+}
+
+/* Pulse Rings */
+.pulse-ring {
+  animation: pulse-animation 2s ease-out infinite;
+  transform-origin: center;
+}
+
+.pulse-ring-2 {
+  animation: pulse-animation 2s ease-out infinite 0.5s;
+  transform-origin: center;
+}
+
+@keyframes pulse-animation {
+  0% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.15;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+}
+
+/* Face Glow Effect */
+.face-glow {
+  filter: drop-shadow(0 0 10px rgba(204, 85, 0, 0.3));
   transition: all 0.3s ease;
 }
 
-.ti-sang-svg:hover {
-  transform: scale(1.02);
-  filter: drop-shadow(0 12px 35px rgba(0,0,0,0.2));
+.face-glow-active {
+  filter: drop-shadow(0 0 20px rgba(204, 85, 0, 0.6));
+  animation: glow-pulse 1.5s ease-in-out infinite;
 }
 
-/* Professional mouth animation */
+@keyframes glow-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 15px rgba(204, 85, 0, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 25px rgba(204, 85, 0, 0.8));
+  }
+}
+
+/* Hair Animation */
+.hair-group {
+  animation: hair-sway 4s ease-in-out infinite;
+  transform-origin: center top;
+}
+
+@keyframes hair-sway {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(1deg);
+  }
+  75% {
+    transform: rotate(-1deg);
+  }
+}
+
+/* Eyes */
+.eyes {
+  transition: transform 0.1s ease;
+}
+
+.eyes.blink circle,
+.eyes.blink ellipse {
+  transform-origin: center;
+  transform: scaleY(0.1);
+  transition: transform 100ms ease;
+}
+
+/* Mouth Animation */
 .mouth {
   transform-origin: center;
   transform-box: fill-box;
-  transition: transform 80ms ease-out, opacity 80ms ease-out;
+  transition: transform 60ms ease-out;
 }
 
-/* New: viseme mouth shapes fade between states */
-.mouth-shape {
-  transition: opacity 90ms ease-out;
-}
-
-.mouth-group.speaking .mouth {
-  animation: premium-mouth-bob 200ms ease-in-out infinite;
-}
-
-/* Enhanced speaking animation */
-.mouth-group.speaking {
+.mouth-group {
   transform-origin: center;
-  animation: premium-face-bob 3s ease-in-out infinite;
 }
 
-/* Eye blink animation */
-.eyes.blink circle, .eyes.blink ellipse {
+.avatar-container.speaking .mouth-group {
+  animation: mouth-speak 0.15s ease-in-out infinite;
+}
+
+@keyframes mouth-speak {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+/* Sound Waves */
+.sound-waves path {
+  animation: sound-wave 1s ease-in-out infinite;
   transform-origin: center;
-  transform: scaleY(0.1);
-  transition: transform 120ms ease;
 }
 
-/* Premium animations */
-@keyframes premium-mouth-bob {
-  0% { transform: scaleY(1); }
-  50% { transform: scaleY(1.4); }
-  100% { transform: scaleY(1); }
+.sound-waves path:nth-child(1) {
+  animation-delay: 0s;
 }
 
-@keyframes premium-face-bob {
-  0% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-3px) scale(1.005); }
-  100% { transform: translateY(0px) scale(1); }
+.sound-waves path:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.sound-waves path:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.sound-waves path:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+@keyframes sound-wave {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.2);
+  }
+}
+
+/* Particle Effects */
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #FF6B1A, #CC5500);
+  border-radius: 50%;
+  opacity: 0;
+  animation: particle-float 2s ease-out infinite;
+  box-shadow: 0 0 10px rgba(204, 85, 0, 0.6);
+}
+
+.particle:nth-child(1) {
+  left: 20%;
+  animation-delay: 0s;
+}
+
+.particle:nth-child(2) {
+  left: 40%;
+  animation-delay: 0.4s;
+}
+
+.particle:nth-child(3) {
+  left: 60%;
+  animation-delay: 0.8s;
+}
+
+.particle:nth-child(4) {
+  left: 80%;
+  animation-delay: 1.2s;
+}
+
+.particle:nth-child(5) {
+  left: 50%;
+  animation-delay: 1.6s;
+}
+
+@keyframes particle-float {
+  0% {
+    bottom: 30%;
+    opacity: 0;
+    transform: translateY(0) scale(0);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    bottom: 80%;
+    opacity: 0;
+    transform: translateY(-100px) scale(0.5);
+  }
+}
+
+/* Floating Animation */
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+  66% {
+    transform: translateY(-4px) rotate(-1deg);
+  }
 }
 
 /* Professional UI styling */

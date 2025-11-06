@@ -66,22 +66,22 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
         </html>
       `);
     }
-    
+
     await gmailService.setAuthCode(code);
     gmailAvailable = true;
-    
+
     res.send(`
       <html>
         <head>
           <style>
             body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
             .success { color: #CC5500; }
-            .button { 
-              background-color: #CC5500; 
-              color: white; 
-              padding: 10px 20px; 
-              text-decoration: none; 
-              border-radius: 5px; 
+            .button {
+              background-color: #CC5500;
+              color: white;
+              padding: 10px 20px;
+              text-decoration: none;
+              border-radius: 5px;
               display: inline-block;
               margin-top: 20px;
             }
@@ -90,6 +90,7 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
         <body>
           <h2 class="success">✅ Gmail Authentication Successful!</h2>
           <p>Ti-Sang can now access your Gmail.</p>
+          <p id="redirect-msg">Redirecting back to app...</p>
           <p>You can now use voice commands like:</p>
           <ul style="text-align: left; display: inline-block;">
             <li>"Check my Gmail"</li>
@@ -98,10 +99,21 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
           </ul>
           <a href="/" class="button">Return to Ti-Sang</a>
           <script>
-            // Auto-close after 5 seconds
-            setTimeout(() => {
-              window.close();
-            }, 5000);
+            // Check if we're in a popup or standalone mode
+            const isPopup = window.opener && !window.opener.closed;
+
+            if (isPopup) {
+              // We're in a popup, auto-close after 2 seconds
+              document.getElementById('redirect-msg').textContent = 'You can close this window now.';
+              setTimeout(() => {
+                window.close();
+              }, 2000);
+            } else {
+              // We're in standalone PWA mode, redirect back to app
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1500);
+            }
           </script>
         </body>
       </html>
@@ -178,12 +190,88 @@ app.post('/api/gmail/send', async (req, res) => {
   }
 });
 
+// Get email by ID
+app.get('/api/gmail/email/:id', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Gmail not authenticated' });
+    const email = await gmailService.getEmailById(req.params.id);
+    res.json({ email });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete email
+app.delete('/api/gmail/email/:id', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Gmail not authenticated' });
+    const { permanent = false } = req.query;
+    const result = await gmailService.deleteEmail(req.params.id, permanent === 'true');
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Reply to email
+app.post('/api/gmail/reply/:id', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Gmail not authenticated' });
+    const { text, html } = req.body;
+    const result = await gmailService.replyToEmail(req.params.id, text, html);
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Summarize emails
+app.post('/api/gmail/summarize', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Gmail not authenticated' });
+    const { maxResults = 10 } = req.body;
+    const emails = await gmailService.getRecentEmails(maxResults);
+    const summary = await gmailService.summarizeEmails(emails);
+    res.json({ summary, emails: emails.slice(0, 5) }); // Include top 5 emails in summary
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Create calendar event
 app.post('/api/calendar/events', async (req, res) => {
   try {
     if (!gmailAvailable) return res.status(503).json({ error: 'Google not authenticated' });
-    const { summary, description, start, end, timezone } = req.body;
-    const result = await gmailService.createCalendarEvent({ summary, description, start, end, timezone });
+    const { summary, description, start, end, timezone, attendees, location, reminders } = req.body;
+    const result = await gmailService.createCalendarEvent({
+      summary, description, start, end, timezone, attendees, location, reminders
+    });
+    res.json({ success: true, result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// List calendar events
+app.get('/api/calendar/events', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Google not authenticated' });
+    const { timeMin, timeMax, maxResults = 10, query } = req.query;
+    const events = await gmailService.listCalendarEvents({
+      timeMin, timeMax, maxResults: parseInt(maxResults), query
+    });
+    res.json({ events });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add action item to calendar
+app.post('/api/calendar/action-item', async (req, res) => {
+  try {
+    if (!gmailAvailable) return res.status(503).json({ error: 'Google not authenticated' });
+    const { actionItem, dueDate, priority = 'medium' } = req.body;
+    const result = await gmailService.addActionItemToCalendar(actionItem, dueDate, priority);
     res.json({ success: true, result });
   } catch (error) {
     res.status(500).json({ error: error.message });
