@@ -75,44 +75,214 @@ const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
 type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
-const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ mouthScale = 1, blink = false, shape = 'mid' }) => {
+const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }: { speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }) => {
   const ORANGE = '#CC5500';
-  const base = {
+  const ORANGE_LIGHT = '#FF6B1A';
+  const ORANGE_DARK = '#A34400';
+  const baseShapes = {
     closed: { rx: 20, ry: 2 },
     narrow: { rx: 18, ry: 3 },
     mid: { rx: 22, ry: 8 },
     open: { rx: 22, ry: 22 },
-  }[shape];
+  };
+  const base = baseShapes[shape] || baseShapes.mid;
+
   return (
-    <div style={{ display: 'inline-block', textAlign: 'center', position: 'relative' }}>
-      <svg className="ti-sang-svg" width="280" height="280" viewBox="0 0 280 280" aria-label="Ti-sang avatar">
-        {/* Face */}
-        <circle cx="140" cy="140" r="100" fill="#FFFFFF" stroke={ORANGE} strokeWidth="6" />
-        
-        {/* Hair */}
-        <path 
-          d="M 60 120 Q 80 50 140 40 Q 200 50 220 120 Q 210 90 180 80 Q 140 70 100 80 Q 70 90 60 120" 
-          fill={ORANGE} 
-          opacity="0.8"
+    <div className={`avatar-container ${speaking ? 'speaking' : ''}`}>
+      <svg className="ti-sang-svg" width="400" height="400" viewBox="0 0 400 400" aria-label="Ti-sang avatar">
+        <defs>
+          {/* Gradients for 3D effect */}
+          <radialGradient id="faceGradient" cx="45%" cy="35%">
+            <stop offset="0%" stopColor="#FFFFFF" />
+            <stop offset="70%" stopColor="#F5F5F5" />
+            <stop offset="100%" stopColor="#E0E0E0" />
+          </radialGradient>
+
+          <radialGradient id="hairGradient" cx="50%" cy="30%">
+            <stop offset="0%" stopColor={ORANGE_LIGHT} />
+            <stop offset="60%" stopColor={ORANGE} />
+            <stop offset="100%" stopColor={ORANGE_DARK} />
+          </radialGradient>
+
+          <radialGradient id="eyeGradient" cx="35%" cy="35%">
+            <stop offset="0%" stopColor={ORANGE_LIGHT} />
+            <stop offset="50%" stopColor={ORANGE} />
+            <stop offset="100%" stopColor={ORANGE_DARK} />
+          </radialGradient>
+
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+
+          <filter id="shadow">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.3"/>
+          </filter>
+        </defs>
+
+        {/* Animated background ring */}
+        <circle
+          cx="200" cy="200" r="160"
+          fill="none"
+          stroke={ORANGE}
+          strokeWidth="3"
+          opacity="0.2"
+          className="pulse-ring"
         />
-        <circle cx="75" cy="95" r="12" fill={ORANGE} opacity="0.6" />
-        <circle cx="205" cy="95" r="12" fill={ORANGE} opacity="0.6" />
-        <circle cx="140" cy="75" r="8" fill={ORANGE} opacity="0.7" />
-        
-        {/* Eyes */}
-        <g className={`eyes ${blink ? 'blink' : ''}`}> 
-          <circle cx="110" cy="125" r="6" fill={ORANGE} />
-          <circle cx="170" cy="125" r="6" fill={ORANGE} />
+        <circle
+          cx="200" cy="200" r="140"
+          fill="none"
+          stroke={ORANGE_LIGHT}
+          strokeWidth="2"
+          opacity="0.15"
+          className="pulse-ring-2"
+        />
+
+        {/* Main face with 3D gradient */}
+        <circle
+          cx="200" cy="200" r="120"
+          fill="url(#faceGradient)"
+          filter="url(#shadow)"
+        />
+
+        {/* Face outline with glow effect */}
+        <circle
+          cx="200" cy="200" r="120"
+          fill="none"
+          stroke={ORANGE}
+          strokeWidth="8"
+          className={speaking ? 'face-glow-active' : 'face-glow'}
+        />
+
+        {/* Hair - more 3D styled */}
+        <g className="hair-group">
+          {/* Main hair shape */}
+          <ellipse
+            cx="200" cy="130" rx="130" ry="70"
+            fill="url(#hairGradient)"
+            filter="url(#shadow)"
+          />
+
+          {/* Hair strands for detail */}
+          <path
+            d="M 100 140 Q 90 100 95 80 Q 100 90 105 100"
+            fill={ORANGE}
+            opacity="0.7"
+          />
+          <path
+            d="M 140 110 Q 140 70 145 55 Q 145 75 145 95"
+            fill={ORANGE_LIGHT}
+            opacity="0.6"
+          />
+          <path
+            d="M 200 105 Q 200 60 200 40 Q 200 65 200 90"
+            fill={ORANGE_LIGHT}
+            opacity="0.8"
+          />
+          <path
+            d="M 260 110 Q 260 70 255 55 Q 255 75 255 95"
+            fill={ORANGE_LIGHT}
+            opacity="0.6"
+          />
+          <path
+            d="M 300 140 Q 310 100 305 80 Q 300 90 295 100"
+            fill={ORANGE}
+            opacity="0.7"
+          />
+
+          {/* Hair highlights */}
+          <ellipse cx="160" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
+          <ellipse cx="240" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
         </g>
-        
-        {/* Mouth */}
-        <ellipse
-          className="mouth"
-          cx="140" cy="180" rx={base.rx} ry={base.ry}
-          fill={ORANGE}
-          style={{ transform: `scaleY(${mouthScale})`, transformOrigin: '140px 180px' }}
+
+        {/* Eyes with 3D effect */}
+        <g className={`eyes ${blink ? 'blink' : ''}`}>
+          {/* Eye whites */}
+          <ellipse cx="160" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
+          <ellipse cx="240" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
+
+          {/* Iris */}
+          <circle cx="160" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
+          <circle cx="240" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
+
+          {/* Pupils with shine */}
+          <circle cx="160" cy="185" r="6" fill="#1a1a1a" />
+          <circle cx="240" cy="185" r="6" fill="#1a1a1a" />
+          <circle cx="163" cy="182" r="2.5" fill="white" opacity="0.9" />
+          <circle cx="243" cy="182" r="2.5" fill="white" opacity="0.9" />
+        </g>
+
+        {/* Eyebrows */}
+        <path
+          d="M 140 165 Q 160 160 180 165"
+          stroke={ORANGE_DARK}
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
         />
+        <path
+          d="M 220 165 Q 240 160 260 165"
+          stroke={ORANGE_DARK}
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
+        />
+
+        {/* Nose - subtle 3D */}
+        <ellipse cx="200" cy="210" rx="8" ry="12" fill={ORANGE} opacity="0.2" />
+
+        {/* Mouth with 3D effect */}
+        <g className="mouth-group">
+          <ellipse
+            className="mouth"
+            cx="200" cy="245"
+            rx={base.rx} ry={base.ry}
+            fill={ORANGE}
+            filter="url(#shadow)"
+            style={{ transform: `scaleY(${mouthScale})`, transformOrigin: '200px 245px' }}
+          />
+          {/* Mouth highlight for 3D effect */}
+          <ellipse
+            cx="200" cy="243"
+            rx={base.rx * 0.6} ry={base.ry * 0.5}
+            fill={ORANGE_LIGHT}
+            opacity="0.3"
+            style={{ transform: `scaleY(${mouthScale * 0.8})`, transformOrigin: '200px 243px' }}
+          />
+        </g>
+
+        {/* Cheek blush */}
+        <ellipse cx="140" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
+        <ellipse cx="260" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
+
+        {/* Sound waves when speaking */}
+        {speaking && (
+          <g className="sound-waves">
+            <path d="M 340 200 Q 350 190 360 200 Q 350 210 340 200"
+                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
+            <path d="M 360 200 Q 375 185 390 200 Q 375 215 360 200"
+                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
+            <path d="M 60 200 Q 50 190 40 200 Q 50 210 60 200"
+                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
+            <path d="M 40 200 Q 25 185 10 200 Q 25 215 40 200"
+                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
+          </g>
+        )}
       </svg>
+
+      {/* Particle effects when speaking */}
+      {speaking && (
+        <div className="particles">
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+          <div className="particle"></div>
+        </div>
+      )}
     </div>
   );
 };
@@ -332,26 +502,42 @@ const WebRTCApp: React.FC = () => {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const base = isLocal ? 'http://localhost:3000' : '';
       const response = await fetch(`${base}/api/gmail/auth-url`);
-      
+
       if (!response.ok) {
         const error = await response.json();
-        return { 
+        return {
           error: error.error || 'Gmail setup failed',
           message: 'Gmail credentials not found. Please check the setup guide.'
         };
       }
-      
+
       const data = await response.json();
-      
-      // Open authentication window
-      window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
-      
-      return { 
-        success: true,
-        message: 'Gmail authentication window opened. Please complete the OAuth flow.'
-      };
+
+      // Detect if running as standalone PWA
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                          (window.navigator as any).standalone === true;
+
+      if (isStandalone) {
+        // In standalone mode, store return URL and redirect the whole page
+        sessionStorage.setItem('oauth-return-url', window.location.href);
+        sessionStorage.setItem('oauth-in-progress', 'true');
+        window.location.href = data.authUrl;
+
+        return {
+          success: true,
+          message: 'Redirecting to Gmail authentication...'
+        };
+      } else {
+        // In browser mode, use popup window
+        window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+
+        return {
+          success: true,
+          message: 'Gmail authentication window opened. Please complete the OAuth flow.'
+        };
+      }
     } catch {
-      return { 
+      return {
         error: 'Gmail setup failed',
         message: 'Unable to start Gmail authentication. Please try again.'
       };
@@ -398,6 +584,122 @@ const WebRTCApp: React.FC = () => {
     }
   }, []);
 
+  const handleGetEmailDetails = useCallback(async (args: { emailId: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/email/${args.emailId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get email details' };
+      }
+      const data = await response.json();
+      return { success: true, email: data.email };
+    } catch {
+      return { error: 'Failed to get email details' };
+    }
+  }, []);
+
+  const handleDeleteEmail = useCallback(async (args: { emailId: string; permanent?: boolean }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/email/${args.emailId}?permanent=${args.permanent || false}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to delete email' };
+      }
+      const data = await response.json();
+      return { success: true, result: data.result };
+    } catch {
+      return { error: 'Failed to delete email' };
+    }
+  }, []);
+
+  const handleReplyToEmail = useCallback(async (args: { emailId: string; text: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/reply/${args.emailId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: args.text })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to reply to email' };
+      }
+      const data = await response.json();
+      return { success: true, result: data.result };
+    } catch {
+      return { error: 'Failed to reply to email' };
+    }
+  }, []);
+
+  const handleSummarizeEmails = useCallback(async (args: { maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/gmail/summarize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxResults: args.maxResults || 10 })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to summarize emails' };
+      }
+      const data = await response.json();
+      return { success: true, summary: data.summary, emails: data.emails };
+    } catch {
+      return { error: 'Failed to summarize emails' };
+    }
+  }, []);
+
+  const handleListCalendarEvents = useCallback(async (args: { maxResults?: number; timeMin?: string; timeMax?: string; query?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const params = new URLSearchParams();
+      if (args.maxResults) params.set('maxResults', args.maxResults.toString());
+      if (args.timeMin) params.set('timeMin', args.timeMin);
+      if (args.timeMax) params.set('timeMax', args.timeMax);
+      if (args.query) params.set('query', args.query);
+
+      const response = await fetch(`${base}/api/calendar/events?${params.toString()}`);
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to list calendar events' };
+      }
+      const data = await response.json();
+      return { success: true, events: data.events };
+    } catch {
+      return { error: 'Failed to list calendar events' };
+    }
+  }, []);
+
+  const handleAddActionItem = useCallback(async (args: { actionItem: string; dueDate: string; priority?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/calendar/action-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to add action item' };
+      }
+      const data = await response.json();
+      return { success: true, result: data.result };
+    } catch {
+      return { error: 'Failed to add action item' };
+    }
+  }, []);
+
   // Check Gmail status
   const checkGmailStatus = useCallback(async () => {
     try {
@@ -422,7 +724,7 @@ const WebRTCApp: React.FC = () => {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const base = isLocal ? 'http://localhost:3000' : '';
       const response = await fetch(`${base}/api/gmail/auth-url`);
-      
+
       if (!response.ok) {
         const error = await response.json();
         if (error.setup_url) {
@@ -433,22 +735,33 @@ const WebRTCApp: React.FC = () => {
         }
         return;
       }
-      
+
       const data = await response.json();
-      
-      // Open authentication window
-      const authWindow = window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
-      
-      // Check if window was closed and refresh status
-      const checkClosed = setInterval(() => {
-        if (authWindow?.closed) {
-          clearInterval(checkClosed);
-          setTimeout(() => {
-            checkGmailStatus();
-          }, 1000);
-        }
-      }, 1000);
-      
+
+      // Detect if running as standalone PWA
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                          (window.navigator as any).standalone === true;
+
+      if (isStandalone) {
+        // In standalone mode, redirect the whole page
+        sessionStorage.setItem('oauth-return-url', window.location.href);
+        sessionStorage.setItem('oauth-in-progress', 'true');
+        window.location.href = data.authUrl;
+      } else {
+        // In browser mode, use popup window
+        const authWindow = window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
+
+        // Check if window was closed and refresh status
+        const checkClosed = setInterval(() => {
+          if (authWindow?.closed) {
+            clearInterval(checkClosed);
+            setTimeout(() => {
+              checkGmailStatus();
+            }, 1000);
+          }
+        }, 1000);
+      }
+
     } catch (error) {
       console.error('Gmail setup error:', error);
       alert('Failed to start Gmail setup. Please try again.');
@@ -707,12 +1020,21 @@ const WebRTCApp: React.FC = () => {
               '',
               'CAPABILITIES:',
               '1. Gmail Management:',
-              '   - Check new emails: "Check my Gmail" or "Any new emails?"',
-              '   - Read specific emails: "Read my latest email" or "What\'s in my inbox?"', 
+              '   - Check emails: "Check my Gmail" or "Any new emails?"',
+              '   - Read specific emails: "Read my latest email" or "What\'s in my inbox?"',
               '   - Send emails: "Send an email to [person] about [topic]"',
+              '   - Reply to emails: "Reply to that email with [message]"',
+              '   - Delete emails: "Delete that spam email"',
               '   - Search emails: "Find emails from [person]" or "Search for [keyword]"',
+              '   - Summarize inbox: "Summarize my recent emails" or "Give me an email summary"',
               '',
-              '2. Web Search:',
+              '2. Calendar & Task Management:',
+              '   - Create events: "Schedule a meeting tomorrow at 2pm"',
+              '   - Add action items: "Add a task to call John on Friday"',
+              '   - List events: "What\'s on my calendar this week?"',
+              '   - Quick scheduling: "Remind me to review the report in 2 hours"',
+              '',
+              '3. Web Search & Information:',
               '   - General search: "Search for [topic]" or "Look up [information]"',
               '   - News: "What\'s the latest news about [topic]?"',
               '   - Facts: "Tell me about [subject]" or "How does [thing] work?"',
@@ -855,6 +1177,83 @@ const WebRTCApp: React.FC = () => {
                     timezone: { type: "string", description: "IANA timezone, e.g., America/New_York" }
                   },
                   required: ["summary", "start", "end"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_email_details",
+                description: "Get full details of a specific email by ID",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    emailId: { type: "string", description: "The email ID to retrieve" }
+                  },
+                  required: ["emailId"]
+                }
+              },
+              {
+                type: "function",
+                name: "delete_email",
+                description: "Delete an email (moves to trash by default, or permanently deletes)",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    emailId: { type: "string", description: "The email ID to delete" },
+                    permanent: { type: "boolean", description: "If true, permanently delete; otherwise move to trash (default: false)" }
+                  },
+                  required: ["emailId"]
+                }
+              },
+              {
+                type: "function",
+                name: "reply_to_email",
+                description: "Reply to an email",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    emailId: { type: "string", description: "The email ID to reply to" },
+                    text: { type: "string", description: "Plain text reply message" }
+                  },
+                  required: ["emailId", "text"]
+                }
+              },
+              {
+                type: "function",
+                name: "summarize_emails",
+                description: "Get a summary of recent emails including total count, senders, and important metrics",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    maxResults: { type: "number", description: "Maximum number of emails to analyze (default: 10)" }
+                  }
+                }
+              },
+              {
+                type: "function",
+                name: "list_calendar_events",
+                description: "List upcoming calendar events",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    maxResults: { type: "number", description: "Maximum number of events to retrieve (default: 10)" },
+                    timeMin: { type: "string", description: "Start time in ISO format (default: now)" },
+                    timeMax: { type: "string", description: "End time in ISO format (optional)" },
+                    query: { type: "string", description: "Search query to filter events (optional)" }
+                  }
+                }
+              },
+              {
+                type: "function",
+                name: "add_action_item",
+                description: "Add an action item to the calendar with reminders",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    actionItem: { type: "string", description: "Description of the action item" },
+                    dueDate: { type: "string", description: "Due date/time in ISO format" },
+                    priority: { type: "string", description: "Priority level: low, medium, or high (default: medium)" }
+                  },
+                  required: ["actionItem", "dueDate"]
                 }
               }
             ]
@@ -1002,6 +1401,24 @@ const WebRTCApp: React.FC = () => {
                     break;
                   case 'create_calendar_event':
                     result = await handleCreateCalendarEvent(parsedArgs);
+                    break;
+                  case 'get_email_details':
+                    result = await handleGetEmailDetails(parsedArgs);
+                    break;
+                  case 'delete_email':
+                    result = await handleDeleteEmail(parsedArgs);
+                    break;
+                  case 'reply_to_email':
+                    result = await handleReplyToEmail(parsedArgs);
+                    break;
+                  case 'summarize_emails':
+                    result = await handleSummarizeEmails(parsedArgs);
+                    break;
+                  case 'list_calendar_events':
+                    result = await handleListCalendarEvents(parsedArgs);
+                    break;
+                  case 'add_action_item':
+                    result = await handleAddActionItem(parsedArgs);
                     break;
                   case 'web_search':
                     result = await handleWebSearch(parsedArgs.query, parsedArgs.maxResults || 5);
@@ -1163,7 +1580,20 @@ const WebRTCApp: React.FC = () => {
   // Prefetch token on mount
   useEffect(() => {
     (async () => {
-      try { 
+      try {
+        // Check if returning from OAuth in standalone mode
+        const oauthInProgress = sessionStorage.getItem('oauth-in-progress');
+        const returnUrl = sessionStorage.getItem('oauth-return-url');
+
+        if (oauthInProgress === 'true') {
+          // Clear OAuth flags
+          sessionStorage.removeItem('oauth-in-progress');
+          sessionStorage.removeItem('oauth-return-url');
+
+          // Wait a moment for backend to process the OAuth callback
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
         await fetchEphemeralToken();
         await checkGmailStatus();
       } catch { /* noop */ }
