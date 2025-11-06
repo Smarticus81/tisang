@@ -1583,7 +1583,6 @@ const WebRTCApp: React.FC = () => {
       try {
         // Check if returning from OAuth in standalone mode
         const oauthInProgress = sessionStorage.getItem('oauth-in-progress');
-        const returnUrl = sessionStorage.getItem('oauth-return-url');
 
         if (oauthInProgress === 'true') {
           // Clear OAuth flags
