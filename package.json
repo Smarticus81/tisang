@@ -13,9 +13,11 @@
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
     "@openai/agents-realtime": "^0.1.0",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "googleapis": "^159.0.0",
+    "mathjs": "^15.1.0",
     "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

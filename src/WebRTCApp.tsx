@@ -700,6 +700,235 @@ const WebRTCApp: React.FC = () => {
     }
   }, []);
 
+  // New utility tool handlers
+  const handleGetWeather = useCallback(async (args: { location: string; units?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get weather' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get weather' };
+    }
+  }, []);
+
+  const handleCalculate = useCallback(async (args: { expression: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to calculate' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to calculate' };
+    }
+  }, []);
+
+  const handleConvertUnits = useCallback(async (args: { value: number; from: string; to: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to convert units' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to convert units' };
+    }
+  }, []);
+
+  const handleTranslateText = useCallback(async (args: { text: string; targetLanguage: string; sourceLanguage?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to translate' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to translate' };
+    }
+  }, []);
+
+  const handleGetDefinition = useCallback(async (args: { word: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/definition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get definition' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get definition' };
+    }
+  }, []);
+
+  const handleWikipediaSearch = useCallback(async (args: { query: string; sentences?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/wikipedia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search Wikipedia' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search Wikipedia' };
+    }
+  }, []);
+
+  const handleGetStockPrice = useCallback(async (args: { symbol: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get stock price' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get stock price' };
+    }
+  }, []);
+
+  const handleGetCryptoPrice = useCallback(async (args: { symbol: string; currency?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/crypto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get crypto price' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get crypto price' };
+    }
+  }, []);
+
+  const handleGetTime = useCallback(async (args: { timezone: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/time`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get time' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get time' };
+    }
+  }, []);
+
+  const handleSearchImages = useCallback(async (args: { query: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search images' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search images' };
+    }
+  }, []);
+
+  const handleSearchVideos = useCallback(async (args: { query: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/videos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search videos' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search videos' };
+    }
+  }, []);
+
+  const handleAdvancedWebSearch = useCallback(async (args: { query: string; timeRange?: string; site?: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/advanced`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search' };
+    }
+  }, []);
+
   // Check Gmail status
   const checkGmailStatus = useCallback(async () => {
     try {
@@ -1009,47 +1238,33 @@ const WebRTCApp: React.FC = () => {
           type: "session.update",
           session: {
             instructions: [
-              'You are ti-sang, a friendly voice assistant with Gmail access and web search capabilities.',
-              'User: 12-year-old, friendly and curious. Use their name (Atticus) only when greeting or when it adds clarity - avoid overusing it.',
-              'Style: Natural, encouraging, with light Gen Z slang. Keep responses concise and upbeat.',
-              'Safety: Kid-appropriate content only. No profanity, adult content, or inappropriate slang.',
+              'You are Ti-Sang, a professional and efficient voice assistant focused on task completion.',
               '',
-              'VOICE COMMANDS YOU SHOULD RECOGNIZE:',
-              '- Wake word return: "ok bye", "thanks ti-sang", "goodbye" → Acknowledge and return to wake word mode',
-              '- Shutdown: "shut down", "stop listening", "turn off" → Acknowledge and stop all listening',
+              'USER: Terence - Address him as "Terence" when appropriate.',
               '',
-              'CAPABILITIES:',
-              '1. Gmail Management:',
-              '   - Check emails: "Check my Gmail" or "Any new emails?"',
-              '   - Read specific emails: "Read my latest email" or "What\'s in my inbox?"',
-              '   - Send emails: "Send an email to [person] about [topic]"',
-              '   - Reply to emails: "Reply to that email with [message]"',
-              '   - Delete emails: "Delete that spam email"',
-              '   - Search emails: "Find emails from [person]" or "Search for [keyword]"',
-              '   - Summarize inbox: "Summarize my recent emails" or "Give me an email summary"',
+              'COMMUNICATION STYLE:',
+              '- Professional and concise',
+              '- Task-focused and efficient',
+              '- Clear and direct responses',
+              '- Minimal pleasantries unless specifically requested',
+              '- Confirm actions taken, report results briefly',
               '',
-              '2. Calendar & Task Management:',
-              '   - Create events: "Schedule a meeting tomorrow at 2pm"',
-              '   - Add action items: "Add a task to call John on Friday"',
-              '   - List events: "What\'s on my calendar this week?"',
-              '   - Quick scheduling: "Remind me to review the report in 2 hours"',
+              'VOICE COMMANDS:',
+              '- "ok bye", "thanks", "goodbye" → Return to wake word mode',
+              '- "shut down", "stop listening" → Stop all listening',
               '',
-              '3. Web Search & Information:',
-              '   - General search: "Search for [topic]" or "Look up [information]"',
-              '   - News: "What\'s the latest news about [topic]?"',
-              '   - Facts: "Tell me about [subject]" or "How does [thing] work?"',
+              'CORE RESPONSIBILITIES:',
+              '1. Execute tasks efficiently',
+              '2. Provide accurate information',
+              '3. Manage email and calendar effectively',
+              '4. Search and retrieve information quickly',
+              '5. Minimize conversation, maximize action',
               '',
-              'Gen Z slang to use naturally (when appropriate):',
-              '- bet = okay/for sure',
-              '- no cap = for real/seriously', 
-              '- bussin = really good (especially food)',
-              '- slay/ate that up = did amazing',
-              '- it\'s giving... = the vibe is...',
-              '- based = being confidently yourself',
-              '- let them cook = let them do their thing',
-              '',
-              'AVOID: Overusing names, asking for age, inappropriate slang like "gyat", being overly formal.',
-              'FOCUS: Be helpful, encouraging, and naturally conversational.'
+              'When handling tasks:',
+              '- Confirm understanding briefly',
+              '- Execute immediately',
+              '- Report completion status',
+              '- Ask for clarification only when necessary'
             ].join('\n'),
             tools: [
               {
@@ -1255,6 +1470,162 @@ const WebRTCApp: React.FC = () => {
                   },
                   required: ["actionItem", "dueDate"]
                 }
+              },
+              {
+                type: "function",
+                name: "get_weather",
+                description: "Get current weather and forecast for a location",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    location: { type: "string", description: "City name or zip code" },
+                    units: { type: "string", description: "Temperature units: celsius, fahrenheit (default: fahrenheit)" }
+                  },
+                  required: ["location"]
+                }
+              },
+              {
+                type: "function",
+                name: "calculate",
+                description: "Perform mathematical calculations and evaluate expressions",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    expression: { type: "string", description: "Mathematical expression to evaluate (e.g., '2 + 2', 'sqrt(16)', 'sin(45)')" }
+                  },
+                  required: ["expression"]
+                }
+              },
+              {
+                type: "function",
+                name: "convert_units",
+                description: "Convert between different units of measurement",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    value: { type: "number", description: "The value to convert" },
+                    from: { type: "string", description: "Source unit (e.g., 'miles', 'kg', 'celsius')" },
+                    to: { type: "string", description: "Target unit (e.g., 'km', 'lbs', 'fahrenheit')" }
+                  },
+                  required: ["value", "from", "to"]
+                }
+              },
+              {
+                type: "function",
+                name: "translate_text",
+                description: "Translate text between languages",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    text: { type: "string", description: "Text to translate" },
+                    targetLanguage: { type: "string", description: "Target language code (e.g., 'es', 'fr', 'de', 'ja')" },
+                    sourceLanguage: { type: "string", description: "Source language code (optional, auto-detect if not provided)" }
+                  },
+                  required: ["text", "targetLanguage"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_definition",
+                description: "Get dictionary definition and information about a word",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    word: { type: "string", description: "Word to define" }
+                  },
+                  required: ["word"]
+                }
+              },
+              {
+                type: "function",
+                name: "wikipedia_search",
+                description: "Search Wikipedia and get article summaries",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Search query" },
+                    sentences: { type: "number", description: "Number of sentences in summary (default: 3)" }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_stock_price",
+                description: "Get current stock price and market data",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string", description: "Stock ticker symbol (e.g., 'AAPL', 'GOOGL')" }
+                  },
+                  required: ["symbol"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_crypto_price",
+                description: "Get cryptocurrency prices and market data",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string", description: "Crypto symbol (e.g., 'BTC', 'ETH', 'SOL')" },
+                    currency: { type: "string", description: "Target currency (default: 'USD')" }
+                  },
+                  required: ["symbol"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_time",
+                description: "Get current time in a specific timezone or location",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    timezone: { type: "string", description: "IANA timezone (e.g., 'America/New_York') or city name" }
+                  },
+                  required: ["timezone"]
+                }
+              },
+              {
+                type: "function",
+                name: "search_images",
+                description: "Search for images on the web",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Image search query" },
+                    maxResults: { type: "number", description: "Maximum number of results (default: 5)" }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "search_videos",
+                description: "Search for videos on the web",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Video search query" },
+                    maxResults: { type: "number", description: "Maximum number of results (default: 5)" }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "advanced_web_search",
+                description: "Advanced web search with filters and options",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Search query" },
+                    timeRange: { type: "string", description: "Time filter: day, week, month, year (optional)" },
+                    site: { type: "string", description: "Specific site to search (e.g., 'reddit.com') (optional)" },
+                    maxResults: { type: "number", description: "Maximum results (default: 5)" }
+                  },
+                  required: ["query"]
+                }
               }
             ]
           }
@@ -1428,6 +1799,42 @@ const WebRTCApp: React.FC = () => {
                     break;
                   case 'setup_gmail':
                     result = await handleGmailSetup();
+                    break;
+                  case 'get_weather':
+                    result = await handleGetWeather(parsedArgs);
+                    break;
+                  case 'calculate':
+                    result = await handleCalculate(parsedArgs);
+                    break;
+                  case 'convert_units':
+                    result = await handleConvertUnits(parsedArgs);
+                    break;
+                  case 'translate_text':
+                    result = await handleTranslateText(parsedArgs);
+                    break;
+                  case 'get_definition':
+                    result = await handleGetDefinition(parsedArgs);
+                    break;
+                  case 'wikipedia_search':
+                    result = await handleWikipediaSearch(parsedArgs);
+                    break;
+                  case 'get_stock_price':
+                    result = await handleGetStockPrice(parsedArgs);
+                    break;
+                  case 'get_crypto_price':
+                    result = await handleGetCryptoPrice(parsedArgs);
+                    break;
+                  case 'get_time':
+                    result = await handleGetTime(parsedArgs);
+                    break;
+                  case 'search_images':
+                    result = await handleSearchImages(parsedArgs);
+                    break;
+                  case 'search_videos':
+                    result = await handleSearchVideos(parsedArgs);
+                    break;
+                  case 'advanced_web_search':
+                    result = await handleAdvancedWebSearch(parsedArgs);
                     break;
                   default:
                     result = { error: `Unknown function: ${name}` };

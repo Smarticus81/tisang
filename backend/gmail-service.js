@@ -432,18 +432,34 @@ class GmailService {
     }
 
     try {
+      // Build start object
+      const startObj = {};
+      if (start.dateTime) {
+        startObj.dateTime = start.dateTime;
+        startObj.timeZone = timezone || 'America/Los_Angeles';
+      } else if (start.date) {
+        startObj.date = start.date;
+      } else {
+        throw new Error('Start date/dateTime is required');
+      }
+
+      // Build end object
+      const endObj = {};
+      if (end.dateTime) {
+        endObj.dateTime = end.dateTime;
+        endObj.timeZone = timezone || 'America/Los_Angeles';
+      } else if (end.date) {
+        endObj.date = end.date;
+      } else {
+        throw new Error('End date/dateTime is required');
+      }
+
       const event = {
         summary,
         description,
         location,
-        start: {
-          dateTime: start.dateTime || start.date,
-          timeZone: timezone || 'America/Los_Angeles'
-        },
-        end: {
-          dateTime: end.dateTime || end.date,
-          timeZone: timezone || 'America/Los_Angeles'
-        }
+        start: startObj,
+        end: endObj
       };
 
       // Add attendees if provided

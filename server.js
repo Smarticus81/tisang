@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import GmailService from './backend/gmail-service.js';
 import SearchService from './backend/search-service.js';
+import UtilityService from './backend/utility-service.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -15,6 +16,7 @@ const PORT = process.env.PORT || 3000;
 // Initialize services
 const gmailService = new GmailService();
 const searchService = new SearchService();
+const utilityService = new UtilityService();
 
 // Initialize Gmail service
 let gmailAvailable = false;
@@ -309,9 +311,142 @@ app.post('/api/search/facts', async (req, res) => {
     if (!query) {
       return res.status(400).json({ error: 'Query required' });
     }
-    
+
     const result = await searchService.getFactualInfo(query);
     res.json({ result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Utility API routes
+app.post('/api/weather', async (req, res) => {
+  try {
+    const { location, units = 'fahrenheit' } = req.body;
+    if (!location) return res.status(400).json({ error: 'Location required' });
+    const result = await utilityService.getWeather(location, units);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/calculate', async (req, res) => {
+  try {
+    const { expression } = req.body;
+    if (!expression) return res.status(400).json({ error: 'Expression required' });
+    const result = utilityService.calculate(expression);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/convert', async (req, res) => {
+  try {
+    const { value, from, to } = req.body;
+    if (value === undefined || !from || !to) return res.status(400).json({ error: 'Value, from, to required' });
+    const result = utilityService.convertUnits(value, from, to);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/translate', async (req, res) => {
+  try {
+    const { text, targetLanguage, sourceLanguage } = req.body;
+    if (!text || !targetLanguage) return res.status(400).json({ error: 'Text and target language required' });
+    const result = await utilityService.translateText(text, targetLanguage, sourceLanguage);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/definition', async (req, res) => {
+  try {
+    const { word } = req.body;
+    if (!word) return res.status(400).json({ error: 'Word required' });
+    const result = await utilityService.getDefinition(word);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/wikipedia', async (req, res) => {
+  try {
+    const { query, sentences = 3 } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    const result = await utilityService.wikipediaSearch(query, sentences);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/stock', async (req, res) => {
+  try {
+    const { symbol } = req.body;
+    if (!symbol) return res.status(400).json({ error: 'Stock symbol required' });
+    const result = await utilityService.getStockPrice(symbol);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/crypto', async (req, res) => {
+  try {
+    const { symbol, currency = 'USD' } = req.body;
+    if (!symbol) return res.status(400).json({ error: 'Crypto symbol required' });
+    const result = await utilityService.getCryptoPrice(symbol, currency);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/time', async (req, res) => {
+  try {
+    const { timezone } = req.body;
+    if (!timezone) return res.status(400).json({ error: 'Timezone required' });
+    const result = utilityService.getTime(timezone);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/search/images', async (req, res) => {
+  try {
+    const { query, maxResults = 5 } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    const result = await utilityService.searchImages(query, maxResults);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/search/videos', async (req, res) => {
+  try {
+    const { query, maxResults = 5 } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    const result = await utilityService.searchVideos(query, maxResults);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/search/advanced', async (req, res) => {
+  try {
+    const { query, timeRange, site, maxResults } = req.body;
+    if (!query) return res.status(400).json({ error: 'Query required' });
+    const result = await utilityService.advancedWebSearch(query, { timeRange, site, maxResults });
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
