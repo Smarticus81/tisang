@@ -700,6 +700,235 @@ const WebRTCApp: React.FC = () => {
     }
   }, []);
 
+  // New utility tool handlers
+  const handleGetWeather = useCallback(async (args: { location: string; units?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get weather' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get weather' };
+    }
+  }, []);
+
+  const handleCalculate = useCallback(async (args: { expression: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/calculate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to calculate' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to calculate' };
+    }
+  }, []);
+
+  const handleConvertUnits = useCallback(async (args: { value: number; from: string; to: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/convert`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to convert units' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to convert units' };
+    }
+  }, []);
+
+  const handleTranslateText = useCallback(async (args: { text: string; targetLanguage: string; sourceLanguage?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/translate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to translate' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to translate' };
+    }
+  }, []);
+
+  const handleGetDefinition = useCallback(async (args: { word: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/definition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get definition' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get definition' };
+    }
+  }, []);
+
+  const handleWikipediaSearch = useCallback(async (args: { query: string; sentences?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/wikipedia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search Wikipedia' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search Wikipedia' };
+    }
+  }, []);
+
+  const handleGetStockPrice = useCallback(async (args: { symbol: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get stock price' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get stock price' };
+    }
+  }, []);
+
+  const handleGetCryptoPrice = useCallback(async (args: { symbol: string; currency?: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/crypto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get crypto price' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get crypto price' };
+    }
+  }, []);
+
+  const handleGetTime = useCallback(async (args: { timezone: string }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/time`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to get time' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to get time' };
+    }
+  }, []);
+
+  const handleSearchImages = useCallback(async (args: { query: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/images`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search images' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search images' };
+    }
+  }, []);
+
+  const handleSearchVideos = useCallback(async (args: { query: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/videos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search videos' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search videos' };
+    }
+  }, []);
+
+  const handleAdvancedWebSearch = useCallback(async (args: { query: string; timeRange?: string; site?: string; maxResults?: number }) => {
+    try {
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const base = isLocal ? 'http://localhost:3000' : '';
+      const response = await fetch(`${base}/api/search/advanced`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args)
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        return { error: error.error || 'Failed to search' };
+      }
+      return await response.json();
+    } catch {
+      return { error: 'Failed to search' };
+    }
+  }, []);
+
   // Check Gmail status
   const checkGmailStatus = useCallback(async () => {
     try {
@@ -1570,6 +1799,42 @@ const WebRTCApp: React.FC = () => {
                     break;
                   case 'setup_gmail':
                     result = await handleGmailSetup();
+                    break;
+                  case 'get_weather':
+                    result = await handleGetWeather(parsedArgs);
+                    break;
+                  case 'calculate':
+                    result = await handleCalculate(parsedArgs);
+                    break;
+                  case 'convert_units':
+                    result = await handleConvertUnits(parsedArgs);
+                    break;
+                  case 'translate_text':
+                    result = await handleTranslateText(parsedArgs);
+                    break;
+                  case 'get_definition':
+                    result = await handleGetDefinition(parsedArgs);
+                    break;
+                  case 'wikipedia_search':
+                    result = await handleWikipediaSearch(parsedArgs);
+                    break;
+                  case 'get_stock_price':
+                    result = await handleGetStockPrice(parsedArgs);
+                    break;
+                  case 'get_crypto_price':
+                    result = await handleGetCryptoPrice(parsedArgs);
+                    break;
+                  case 'get_time':
+                    result = await handleGetTime(parsedArgs);
+                    break;
+                  case 'search_images':
+                    result = await handleSearchImages(parsedArgs);
+                    break;
+                  case 'search_videos':
+                    result = await handleSearchVideos(parsedArgs);
+                    break;
+                  case 'advanced_web_search':
+                    result = await handleAdvancedWebSearch(parsedArgs);
                     break;
                   default:
                     result = { error: `Unknown function: ${name}` };
