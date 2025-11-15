@@ -75,212 +75,258 @@ const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
 type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
-const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }: { speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }) => {
-  const ORANGE = '#CC5500';
-  const ORANGE_LIGHT = '#FF6B1A';
-  const ORANGE_DARK = '#A34400';
-  const baseShapes = {
-    closed: { rx: 20, ry: 2 },
-    narrow: { rx: 18, ry: 3 },
-    mid: { rx: 22, ry: 8 },
-    open: { rx: 22, ry: 22 },
+const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }) => {
+  const PRIMARY = '#FF6B35';
+  const PRIMARY_LIGHT = '#FF9F68';
+  const PRIMARY_DARK = '#D94A1A';
+  const ACCENT = '#FFD23F';
+  const GLOW = '#00D9FF';
+  
+  const mouthShapes = {
+    closed: { width: 60, height: 4, type: 'line' },
+    narrow: { width: 50, height: 12, type: 'narrow' },
+    mid: { width: 55, height: 28, type: 'oval' },
+    open: { width: 58, height: 48, type: 'round' },
   };
-  const base = baseShapes[shape] || baseShapes.mid;
+  const current = mouthShapes[shape] || mouthShapes.mid;
+  const intensity = speaking ? Math.min(mouthScale, 2.5) : 1;
 
   return (
-    <div className={`avatar-container ${speaking ? 'speaking' : ''}`}>
-      <svg className="ti-sang-svg" width="400" height="400" viewBox="0 0 400 400" aria-label="Ti-sang avatar">
+    <div className={`avatar-sota ${speaking ? 'avatar-speaking' : ''}`}>
+      <svg width="420" height="420" viewBox="0 0 420 420" className="avatar-svg">
         <defs>
-          {/* Gradients for 3D effect */}
-          <radialGradient id="faceGradient" cx="45%" cy="35%">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="70%" stopColor="#F5F5F5" />
-            <stop offset="100%" stopColor="#E0E0E0" />
+          <radialGradient id="sphere-gradient" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+            <stop offset="50%" stopColor="#f8f8f8" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#e0e0e0" stopOpacity="0.85" />
           </radialGradient>
-
-          <radialGradient id="hairGradient" cx="50%" cy="30%">
-            <stop offset="0%" stopColor={ORANGE_LIGHT} />
-            <stop offset="60%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor={ORANGE_DARK} />
+          
+          <radialGradient id="hair-gradient" cx="50%" cy="20%">
+            <stop offset="0%" stopColor={PRIMARY_LIGHT} />
+            <stop offset="40%" stopColor={PRIMARY} />
+            <stop offset="100%" stopColor={PRIMARY_DARK} />
           </radialGradient>
-
-          <radialGradient id="eyeGradient" cx="35%" cy="35%">
-            <stop offset="0%" stopColor={ORANGE_LIGHT} />
-            <stop offset="50%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor={ORANGE_DARK} />
+          
+          <radialGradient id="eye-gradient" cx="30%" cy="30%">
+            <stop offset="0%" stopColor={ACCENT} />
+            <stop offset="50%" stopColor={PRIMARY} />
+            <stop offset="100%" stopColor={PRIMARY_DARK} />
           </radialGradient>
-
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          
+          <linearGradient id="mouth-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={PRIMARY} />
+            <stop offset="100%" stopColor={PRIMARY_DARK} />
+          </linearGradient>
+          
+          <filter id="glow-filter">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
             <feMerge>
               <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
-
-          <filter id="shadow">
-            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.3"/>
+          
+          <filter id="deep-shadow">
+            <feDropShadow dx="0" dy="8" stdDeviation="12" floodOpacity="0.4"/>
+          </filter>
+          
+          <filter id="inner-glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feComposite in="blur" in2="SourceGraphic" operator="in" result="innerGlow"/>
           </filter>
         </defs>
 
-        {/* Animated background ring */}
-        <circle
-          cx="200" cy="200" r="160"
-          fill="none"
-          stroke={ORANGE}
-          strokeWidth="3"
-          opacity="0.2"
-          className="pulse-ring"
-        />
-        <circle
-          cx="200" cy="200" r="140"
-          fill="none"
-          stroke={ORANGE_LIGHT}
-          strokeWidth="2"
-          opacity="0.15"
-          className="pulse-ring-2"
-        />
-
-        {/* Main face with 3D gradient */}
-        <circle
-          cx="200" cy="200" r="120"
-          fill="url(#faceGradient)"
-          filter="url(#shadow)"
-        />
-
-        {/* Face outline with glow effect */}
-        <circle
-          cx="200" cy="200" r="120"
-          fill="none"
-          stroke={ORANGE}
-          strokeWidth="8"
-          className={speaking ? 'face-glow-active' : 'face-glow'}
-        />
-
-        {/* Hair - more 3D styled */}
-        <g className="hair-group">
-          {/* Main hair shape */}
-          <ellipse
-            cx="200" cy="130" rx="130" ry="70"
-            fill="url(#hairGradient)"
-            filter="url(#shadow)"
-          />
-
-          {/* Hair strands for detail */}
-          <path
-            d="M 100 140 Q 90 100 95 80 Q 100 90 105 100"
-            fill={ORANGE}
-            opacity="0.7"
-          />
-          <path
-            d="M 140 110 Q 140 70 145 55 Q 145 75 145 95"
-            fill={ORANGE_LIGHT}
-            opacity="0.6"
-          />
-          <path
-            d="M 200 105 Q 200 60 200 40 Q 200 65 200 90"
-            fill={ORANGE_LIGHT}
-            opacity="0.8"
-          />
-          <path
-            d="M 260 110 Q 260 70 255 55 Q 255 75 255 95"
-            fill={ORANGE_LIGHT}
-            opacity="0.6"
-          />
-          <path
-            d="M 300 140 Q 310 100 305 80 Q 300 90 295 100"
-            fill={ORANGE}
-            opacity="0.7"
-          />
-
-          {/* Hair highlights */}
-          <ellipse cx="160" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
-          <ellipse cx="240" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
+        {/* Orbital rings */}
+        <g className="orbital-rings">
+          <circle cx="210" cy="210" r="185" fill="none" stroke={PRIMARY} strokeWidth="2" opacity="0.15" className="orbit-1" />
+          <circle cx="210" cy="210" r="170" fill="none" stroke={GLOW} strokeWidth="1.5" opacity="0.2" className="orbit-2" />
+          <circle cx="210" cy="210" r="155" fill="none" stroke={ACCENT} strokeWidth="1" opacity="0.1" className="orbit-3" />
         </g>
 
-        {/* Eyes with 3D effect */}
-        <g className={`eyes ${blink ? 'blink' : ''}`}>
-          {/* Eye whites */}
-          <ellipse cx="160" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
-          <ellipse cx="240" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
+        {/* Energy field */}
+        {speaking && (
+          <g className="energy-field">
+            <circle cx="210" cy="210" r="145" fill="none" stroke={GLOW} strokeWidth="3" opacity="0.4" className="energy-pulse-1" />
+            <circle cx="210" cy="210" r="145" fill="none" stroke={PRIMARY} strokeWidth="2" opacity="0.3" className="energy-pulse-2" />
+          </g>
+        )}
 
-          {/* Iris */}
-          <circle cx="160" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
-          <circle cx="240" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
+        {/* Main sphere face */}
+        <circle
+          cx="210" cy="210" r="130"
+          fill="url(#sphere-gradient)"
+          filter="url(#deep-shadow)"
+          className="face-sphere"
+        />
 
-          {/* Pupils with shine */}
-          <circle cx="160" cy="185" r="6" fill="#1a1a1a" />
-          <circle cx="240" cy="185" r="6" fill="#1a1a1a" />
-          <circle cx="163" cy="182" r="2.5" fill="white" opacity="0.9" />
-          <circle cx="243" cy="182" r="2.5" fill="white" opacity="0.9" />
+        {/* Face highlight */}
+        <ellipse
+          cx="180" cy="170" rx="50" ry="60"
+          fill="white"
+          opacity="0.25"
+          className="face-highlight"
+        />
+
+        {/* Dynamic hair */}
+        <g className="hair-dynamic">
+          <path
+            d="M 210 80 Q 250 70 280 90 Q 290 100 295 120 Q 260 100 230 100 Q 200 100 170 100 Q 140 100 105 120 Q 110 100 120 90 Q 150 70 170 80 Q 190 75 210 80 Z"
+            fill="url(#hair-gradient)"
+            filter="url(#deep-shadow)"
+          />
+          <ellipse cx="210" cy="90" rx="80" ry="45" fill="url(#hair-gradient)" opacity="0.6" />
+          
+          {/* Hair strands */}
+          {[0, 1, 2, 3, 4].map((i) => (
+            <path
+              key={i}
+              d={`M ${130 + i * 40} 95 Q ${125 + i * 40} 60 ${130 + i * 40} 50`}
+              stroke={PRIMARY_LIGHT}
+              strokeWidth="3"
+              fill="none"
+              opacity="0.4"
+              strokeLinecap="round"
+              className={`hair-strand hair-strand-${i}`}
+            />
+          ))}
+        </g>
+
+        {/* Eyes */}
+        <g className={`eyes-modern ${blink ? 'eyes-blink' : ''}`}>
+          {/* Left eye */}
+          <ellipse cx="170" cy="195" rx="22" ry="24" fill="white" opacity="0.95" />
+          <circle cx="170" cy="195" r="14" fill="url(#eye-gradient)" filter="url(#inner-glow)" />
+          <circle cx="170" cy="195" r="7" fill="#0a0a0a" />
+          <ellipse cx="173" cy="192" rx="3" ry="4" fill="white" opacity="0.95" />
+          
+          {/* Right eye */}
+          <ellipse cx="250" cy="195" rx="22" ry="24" fill="white" opacity="0.95" />
+          <circle cx="250" cy="195" r="14" fill="url(#eye-gradient)" filter="url(#inner-glow)" />
+          <circle cx="250" cy="195" r="7" fill="#0a0a0a" />
+          <ellipse cx="253" cy="192" rx="3" ry="4" fill="white" opacity="0.95" />
+          
+          {/* Glow effect on eyes when speaking */}
+          {speaking && (
+            <>
+              <circle cx="170" cy="195" r="18" fill="none" stroke={GLOW} strokeWidth="2" opacity="0.3" className="eye-glow" />
+              <circle cx="250" cy="195" r="18" fill="none" stroke={GLOW} strokeWidth="2" opacity="0.3" className="eye-glow" />
+            </>
+          )}
         </g>
 
         {/* Eyebrows */}
-        <path
-          d="M 140 165 Q 160 160 180 165"
-          stroke={ORANGE_DARK}
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 220 165 Q 240 160 260 165"
-          stroke={ORANGE_DARK}
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        {/* Nose - subtle 3D */}
-        <ellipse cx="200" cy="210" rx="8" ry="12" fill={ORANGE} opacity="0.2" />
-
-        {/* Mouth with 3D effect */}
-        <g className="mouth-group">
-          <ellipse
-            className="mouth"
-            cx="200" cy="245"
-            rx={base.rx} ry={base.ry}
-            fill={ORANGE}
-            filter="url(#shadow)"
-            style={{ transform: `scaleY(${mouthScale})`, transformOrigin: '200px 245px' }}
+        <g className="eyebrows-modern">
+          <path
+            d="M 145 175 Q 170 168 195 173"
+            stroke={PRIMARY_DARK}
+            strokeWidth="5"
+            fill="none"
+            strokeLinecap="round"
+            className="eyebrow-left"
           />
-          {/* Mouth highlight for 3D effect */}
-          <ellipse
-            cx="200" cy="243"
-            rx={base.rx * 0.6} ry={base.ry * 0.5}
-            fill={ORANGE_LIGHT}
-            opacity="0.3"
-            style={{ transform: `scaleY(${mouthScale * 0.8})`, transformOrigin: '200px 243px' }}
+          <path
+            d="M 225 173 Q 250 168 275 175"
+            stroke={PRIMARY_DARK}
+            strokeWidth="5"
+            fill="none"
+            strokeLinecap="round"
+            className="eyebrow-right"
           />
         </g>
 
-        {/* Cheek blush */}
-        <ellipse cx="140" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
-        <ellipse cx="260" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
+        {/* Nose */}
+        <g className="nose-modern">
+          <ellipse cx="210" cy="220" rx="6" ry="10" fill={PRIMARY} opacity="0.15" />
+          <path
+            d="M 210 215 L 210 228"
+            stroke={PRIMARY}
+            strokeWidth="2"
+            opacity="0.2"
+          />
+        </g>
 
-        {/* Sound waves when speaking */}
+        {/* Dynamic mouth */}
+        <g className="mouth-dynamic">
+          {current.type === 'line' && (
+            <rect
+              x={210 - current.width / 2}
+              y={255 - current.height / 2}
+              width={current.width}
+              height={current.height * intensity}
+              rx={current.height * intensity}
+              fill="url(#mouth-gradient)"
+              filter="url(#inner-glow)"
+              className="mouth-shape"
+            />
+          )}
+          {(current.type === 'oval' || current.type === 'narrow') && (
+            <ellipse
+              cx="210"
+              cy="255"
+              rx={current.width / 2}
+              ry={(current.height / 2) * intensity}
+              fill="url(#mouth-gradient)"
+              filter="url(#inner-glow)"
+              className="mouth-shape"
+            />
+          )}
+          {current.type === 'round' && (
+            <circle
+              cx="210"
+              cy="260"
+              r={(current.height / 2) * intensity}
+              fill="url(#mouth-gradient)"
+              filter="url(#inner-glow)"
+              className="mouth-shape"
+            />
+          )}
+          
+          {/* Teeth when mouth open */}
+          {current.type === 'round' && intensity > 1.2 && (
+            <rect
+              x="195"
+              y="250"
+              width="30"
+              height="8"
+              fill="white"
+              opacity="0.9"
+              rx="2"
+            />
+          )}
+        </g>
+
+        {/* Cheeks */}
+        <g className="cheeks">
+          <ellipse cx="150" cy="225" rx="20" ry="14" fill={PRIMARY_LIGHT} opacity="0.25" />
+          <ellipse cx="270" cy="225" rx="20" ry="14" fill={PRIMARY_LIGHT} opacity="0.25" />
+        </g>
+
+        {/* Audio waves */}
         {speaking && (
-          <g className="sound-waves">
-            <path d="M 340 200 Q 350 190 360 200 Q 350 210 340 200"
-                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
-            <path d="M 360 200 Q 375 185 390 200 Q 375 215 360 200"
-                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
-            <path d="M 60 200 Q 50 190 40 200 Q 50 210 60 200"
-                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
-            <path d="M 40 200 Q 25 185 10 200 Q 25 215 40 200"
-                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
+          <g className="audio-waves">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <circle
+                key={i}
+                cx="210"
+                cy="210"
+                r={150 + i * 10}
+                fill="none"
+                stroke={i % 2 === 0 ? PRIMARY : GLOW}
+                strokeWidth="2"
+                opacity="0"
+                className={`wave-ring wave-${i}`}
+              />
+            ))}
           </g>
         )}
       </svg>
 
-      {/* Particle effects when speaking */}
+      {/* Energy particles */}
       {speaking && (
-        <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
+        <div className="energy-particles">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className={`particle-energy particle-${i}`} />
+          ))}
         </div>
       )}
     </div>
