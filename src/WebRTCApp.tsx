@@ -75,212 +75,273 @@ const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
 type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
-const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }: { speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }) => {
-  const ORANGE = '#CC5500';
-  const ORANGE_LIGHT = '#FF6B1A';
-  const ORANGE_DARK = '#A34400';
-  const baseShapes = {
-    closed: { rx: 20, ry: 2 },
-    narrow: { rx: 18, ry: 3 },
-    mid: { rx: 22, ry: 8 },
-    open: { rx: 22, ry: 22 },
+const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({
+  speaking,
+  mouthScale = 1,
+  blink = false,
+  shape = 'mid'
+}: {
+  speaking: boolean;
+  mouthScale?: number;
+  blink?: boolean;
+  shape?: MouthShape;
+}) => {
+  const palette = {
+    ember: '#FF7A18',
+    molten: '#EC4899',
+    plasma: '#7C3AED',
+    aurora: '#6EE7B7',
+    carbon: '#08090C',
+    highlight: '#FFE29F'
   };
-  const base = baseShapes[shape] || baseShapes.mid;
+
+  const mouthShapes: Record<MouthShape, { rx: number; ry: number; depth: number }> = {
+    closed: { rx: 26, ry: 6, depth: 5 },
+    narrow: { rx: 30, ry: 9, depth: 6 },
+    mid: { rx: 34, ry: 13, depth: 8 },
+    open: { rx: 38, ry: 20, depth: 10 }
+  };
+
+  const geometry = mouthShapes[shape] ?? mouthShapes.mid;
+  const voiceEnergy = Math.min(1.8, Math.max(0.65, mouthScale));
+  const cheekGlow = Math.min(0.85, 0.4 + Math.max(0, voiceEnergy - 1) * 0.6);
+  const eqHeights = [0.4, 0.65, 1, 0.65, 0.4].map((base, index) =>
+    Math.min(1.6, Math.max(0.25, base * voiceEnergy * (1 + index * 0.04)))
+  );
+
+  const mouthPath = `
+    M ${210 - geometry.rx} 272
+    Q 210 ${272 + geometry.ry * voiceEnergy} ${210 + geometry.rx} 272
+    Q 210 ${272 - geometry.depth} ${210 - geometry.rx} 272
+    Z
+  `;
 
   return (
     <div className={`avatar-container ${speaking ? 'speaking' : ''}`}>
-      <svg className="ti-sang-svg" width="400" height="400" viewBox="0 0 400 400" aria-label="Ti-sang avatar">
+      <svg
+        className="ti-sang-svg"
+        width="420"
+        height="420"
+        viewBox="0 0 420 420"
+        role="img"
+        aria-label="Ti-sang avatar holographic shell"
+      >
         <defs>
-          {/* Gradients for 3D effect */}
-          <radialGradient id="faceGradient" cx="45%" cy="35%">
-            <stop offset="0%" stopColor="#FFFFFF" />
-            <stop offset="70%" stopColor="#F5F5F5" />
-            <stop offset="100%" stopColor="#E0E0E0" />
+          <radialGradient id="avatarAura" cx="50%" cy="45%" r="70%">
+            <stop offset="0%" stopColor={palette.highlight} stopOpacity="0.35" />
+            <stop offset="55%" stopColor={palette.ember} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={palette.plasma} stopOpacity="0.05" />
           </radialGradient>
 
-          <radialGradient id="hairGradient" cx="50%" cy="30%">
-            <stop offset="0%" stopColor={ORANGE_LIGHT} />
-            <stop offset="60%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor={ORANGE_DARK} />
+          <radialGradient id="avatarCore" cx="45%" cy="30%" r="60%">
+            <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
+            <stop offset="45%" stopColor="#F7F6FB" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#C7D2FE" stopOpacity="0.9" />
           </radialGradient>
 
-          <radialGradient id="eyeGradient" cx="35%" cy="35%">
-            <stop offset="0%" stopColor={ORANGE_LIGHT} />
-            <stop offset="50%" stopColor={ORANGE} />
-            <stop offset="100%" stopColor={ORANGE_DARK} />
-          </radialGradient>
+          <linearGradient id="visorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={palette.plasma} stopOpacity="0.85" />
+            <stop offset="50%" stopColor={palette.ember} stopOpacity="0.95" />
+            <stop offset="100%" stopColor={palette.molten} stopOpacity="0.85" />
+          </linearGradient>
 
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+          <linearGradient id="browGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={palette.ember} />
+            <stop offset="100%" stopColor={palette.plasma} />
+          </linearGradient>
+
+          <linearGradient id="mouthGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={palette.ember} />
+            <stop offset="100%" stopColor={palette.molten} />
+          </linearGradient>
+
+          <linearGradient id="eqGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor={palette.highlight} />
+            <stop offset="100%" stopColor={palette.aurora} />
+          </linearGradient>
+
+          <pattern id="circuitGrid" width="12" height="12" patternUnits="userSpaceOnUse">
+            <path d="M12 0H0V12" stroke={palette.plasma} strokeWidth="0.35" opacity="0.18" />
+            <circle cx="0" cy="0" r="1.2" fill={palette.ember} opacity="0.25" />
+          </pattern>
+
+          <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blurred" />
             <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
+              <feMergeNode in="blurred" />
+              <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
 
-          <filter id="shadow">
-            <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.3"/>
+          <filter id="signalBlur" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="5" />
           </filter>
         </defs>
 
-        {/* Animated background ring */}
-        <circle
-          cx="200" cy="200" r="160"
-          fill="none"
-          stroke={ORANGE}
-          strokeWidth="3"
-          opacity="0.2"
-          className="pulse-ring"
-        />
-        <circle
-          cx="200" cy="200" r="140"
-          fill="none"
-          stroke={ORANGE_LIGHT}
-          strokeWidth="2"
-          opacity="0.15"
-          className="pulse-ring-2"
-        />
+        <g className="avatar-holo">
+          <circle className="avatar-aura" cx="210" cy="210" r="190" fill="url(#avatarAura)" />
 
-        {/* Main face with 3D gradient */}
-        <circle
-          cx="200" cy="200" r="120"
-          fill="url(#faceGradient)"
-          filter="url(#shadow)"
-        />
+          <g className="avatar-energy-rings">
+            {[150, 175, 200].map((radius, index) => (
+              <circle
+                key={radius}
+                className={`avatar-ring ring-${index}`}
+                cx="210"
+                cy="210"
+                r={radius}
+                fill="none"
+                stroke={palette.ember}
+                strokeOpacity={0.08 + index * 0.05}
+                strokeWidth="2"
+              />
+            ))}
+          </g>
 
-        {/* Face outline with glow effect */}
-        <circle
-          cx="200" cy="200" r="120"
-          fill="none"
-          stroke={ORANGE}
-          strokeWidth="8"
-          className={speaking ? 'face-glow-active' : 'face-glow'}
-        />
+          {speaking && (
+            <g className="avatar-voice-rings" aria-hidden="true">
+              {[1.05, 1.2, 1.35].map((scale, index) => (
+                <circle
+                  key={`voice-${index}`}
+                  cx="210"
+                  cy="210"
+                  r={135 * scale}
+                  fill="none"
+                  stroke={palette.highlight}
+                  strokeOpacity={0.25 / (index + 1)}
+                  strokeWidth="3"
+                  className="voice-ring"
+                />
+              ))}
+            </g>
+          )}
 
-        {/* Hair - more 3D styled */}
-        <g className="hair-group">
-          {/* Main hair shape */}
-          <ellipse
-            cx="200" cy="130" rx="130" ry="70"
-            fill="url(#hairGradient)"
-            filter="url(#shadow)"
-          />
+          <circle className="avatar-shell" cx="210" cy="210" r="155" fill="rgba(255,255,255,0.08)" stroke={palette.ember} strokeOpacity="0.35" strokeWidth="4" />
+          <circle className="avatar-core" cx="210" cy="210" r="135" fill="url(#avatarCore)" />
+          <circle className="avatar-core-overlay" cx="210" cy="210" r="134" fill="url(#circuitGrid)" opacity="0.45" />
 
-          {/* Hair strands for detail */}
           <path
-            d="M 100 140 Q 90 100 95 80 Q 100 90 105 100"
-            fill={ORANGE}
-            opacity="0.7"
+            className="avatar-visor"
+            d="M 82 182 Q 210 120 338 182 Q 320 246 210 258 Q 100 246 82 182 Z"
+            fill="url(#visorGradient)"
+            filter="url(#softGlow)"
           />
           <path
-            d="M 140 110 Q 140 70 145 55 Q 145 75 145 95"
-            fill={ORANGE_LIGHT}
-            opacity="0.6"
-          />
-          <path
-            d="M 200 105 Q 200 60 200 40 Q 200 65 200 90"
-            fill={ORANGE_LIGHT}
+            className="avatar-visor-gloss"
+            d="M 110 178 Q 210 150 310 178 Q 304 190 210 204 Q 116 190 110 178 Z"
+            fill="rgba(255,255,255,0.35)"
             opacity="0.8"
           />
-          <path
-            d="M 260 110 Q 260 70 255 55 Q 255 75 255 95"
-            fill={ORANGE_LIGHT}
-            opacity="0.6"
-          />
-          <path
-            d="M 300 140 Q 310 100 305 80 Q 300 90 295 100"
-            fill={ORANGE}
-            opacity="0.7"
-          />
 
-          {/* Hair highlights */}
-          <ellipse cx="160" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
-          <ellipse cx="240" cy="100" rx="15" ry="8" fill="#FFB380" opacity="0.4" />
-        </g>
-
-        {/* Eyes with 3D effect */}
-        <g className={`eyes ${blink ? 'blink' : ''}`}>
-          {/* Eye whites */}
-          <ellipse cx="160" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
-          <ellipse cx="240" cy="185" rx="20" ry="18" fill="white" opacity="0.9" />
-
-          {/* Iris */}
-          <circle cx="160" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
-          <circle cx="240" cy="185" r="12" fill="url(#eyeGradient)" filter="url(#shadow)" />
-
-          {/* Pupils with shine */}
-          <circle cx="160" cy="185" r="6" fill="#1a1a1a" />
-          <circle cx="240" cy="185" r="6" fill="#1a1a1a" />
-          <circle cx="163" cy="182" r="2.5" fill="white" opacity="0.9" />
-          <circle cx="243" cy="182" r="2.5" fill="white" opacity="0.9" />
-        </g>
-
-        {/* Eyebrows */}
-        <path
-          d="M 140 165 Q 160 160 180 165"
-          stroke={ORANGE_DARK}
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <path
-          d="M 220 165 Q 240 160 260 165"
-          stroke={ORANGE_DARK}
-          strokeWidth="4"
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        {/* Nose - subtle 3D */}
-        <ellipse cx="200" cy="210" rx="8" ry="12" fill={ORANGE} opacity="0.2" />
-
-        {/* Mouth with 3D effect */}
-        <g className="mouth-group">
-          <ellipse
-            className="mouth"
-            cx="200" cy="245"
-            rx={base.rx} ry={base.ry}
-            fill={ORANGE}
-            filter="url(#shadow)"
-            style={{ transform: `scaleY(${mouthScale})`, transformOrigin: '200px 245px' }}
-          />
-          {/* Mouth highlight for 3D effect */}
-          <ellipse
-            cx="200" cy="243"
-            rx={base.rx * 0.6} ry={base.ry * 0.5}
-            fill={ORANGE_LIGHT}
-            opacity="0.3"
-            style={{ transform: `scaleY(${mouthScale * 0.8})`, transformOrigin: '200px 243px' }}
-          />
-        </g>
-
-        {/* Cheek blush */}
-        <ellipse cx="140" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
-        <ellipse cx="260" cy="215" rx="18" ry="12" fill="#FFB3BA" opacity="0.4" />
-
-        {/* Sound waves when speaking */}
-        {speaking && (
-          <g className="sound-waves">
-            <path d="M 340 200 Q 350 190 360 200 Q 350 210 340 200"
-                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
-            <path d="M 360 200 Q 375 185 390 200 Q 375 215 360 200"
-                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
-            <path d="M 60 200 Q 50 190 40 200 Q 50 210 60 200"
-                  stroke={ORANGE} strokeWidth="3" fill="none" opacity="0.6" />
-            <path d="M 40 200 Q 25 185 10 200 Q 25 215 40 200"
-                  stroke={ORANGE_LIGHT} strokeWidth="2" fill="none" opacity="0.4" />
+          <g className={`avatar-eyes ${blink ? 'blink' : ''}`}>
+            {[
+              { cx: 155, cy: 212 },
+              { cx: 265, cy: 212 }
+            ].map(({ cx, cy }) => (
+              <g key={`${cx}-${cy}`}>
+                <ellipse className="avatar-eye-white" cx={cx} cy={cy} rx="26" ry="18" fill="rgba(255,255,255,0.95)" />
+                <circle className="avatar-iris" cx={cx} cy={cy} r="12" fill={palette.plasma} />
+                <circle className="avatar-iris" cx={cx} cy={cy} r="8" fill={palette.ember} opacity="0.9" />
+                <circle className="avatar-pupil" cx={cx} cy={cy} r="4" fill={palette.carbon} />
+                <circle className="avatar-eye-glint" cx={cx - 4} cy={cy - 5} r="2.4" fill="#fff" opacity="0.8" />
+              </g>
+            ))}
           </g>
-        )}
+
+          <g className="avatar-brows">
+            <path
+              d="M 120 178 Q 166 160 206 178"
+              stroke="url(#browGradient)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              fill="none"
+            />
+            <path
+              d="M 214 178 Q 254 160 300 178"
+              stroke="url(#browGradient)"
+              strokeWidth="6"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </g>
+
+          <ellipse cx="210" cy="232" rx="12" ry="18" fill={palette.molten} opacity="0.15" />
+
+          <g className="avatar-mouth">
+            <path d={mouthPath} fill="url(#mouthGradient)" stroke={palette.ember} strokeOpacity="0.3" strokeWidth="1.5" />
+            <path
+              d={`M ${210 - geometry.rx + 6} 268 Q 210 ${268 + geometry.ry * 0.7} ${210 + geometry.rx - 6} 268`}
+              stroke={palette.highlight}
+              strokeOpacity="0.6"
+              strokeWidth="2"
+              fill="none"
+            />
+          </g>
+
+          <g className="avatar-cheeks">
+            <ellipse cx="130" cy="250" rx="26" ry="12" fill={palette.aurora} opacity={cheekGlow} />
+            <ellipse cx="290" cy="250" rx="26" ry="12" fill={palette.aurora} opacity={cheekGlow} />
+          </g>
+
+          <g className="avatar-face-lines">
+            <path d="M 140 300 Q 210 320 280 300" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" fill="none" opacity="0.4" />
+            <path d="M 132 150 Q 210 110 288 150" stroke="rgba(255,255,255,0.25)" strokeWidth="1" fill="none" opacity="0.35" />
+          </g>
+
+          {speaking && (
+            <g className="avatar-voice-waves" aria-hidden="true">
+              <path
+                d="M 50 210 Q 90 170 140 210 Q 190 250 240 210 Q 290 170 340 210"
+                stroke={palette.ember}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <path
+                d="M 70 235 Q 120 195 170 235 Q 220 275 270 235 Q 320 195 370 235"
+                stroke={palette.plasma}
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                fill="none"
+                opacity="0.7"
+              />
+            </g>
+          )}
+
+          <g className="avatar-eq" transform="translate(100 330)" data-speaking={speaking}>
+            {eqHeights.map((height, index) => (
+              <rect
+                key={`eq-${index}`}
+                className="avatar-eq-bar"
+                x={index * 36}
+                y={70 - height * 60}
+                width="16"
+                height={height * 60}
+                rx="6"
+                fill="url(#eqGradient)"
+              />
+            ))}
+          </g>
+
+          <g className="avatar-floating-nodes">
+            {[{ x: 110, y: 70 }, { x: 40, y: 260 }, { x: 360, y: 80 }, { x: 340, y: 320 }].map(({ x, y }, index) => (
+              <circle
+                key={`node-${index}`}
+                cx={x}
+                cy={y}
+                r={6 + index * 1.5}
+                fill={index % 2 === 0 ? palette.aurora : palette.molten}
+                opacity="0.7"
+              />
+            ))}
+          </g>
+        </g>
       </svg>
 
-      {/* Particle effects when speaking */}
       {speaking && (
         <div className="particles">
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
-          <div className="particle"></div>
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={`particle-${index}`} className="particle" />
+          ))}
         </div>
       )}
     </div>

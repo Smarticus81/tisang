@@ -43,244 +43,268 @@
   color: #888;
 }
 
-/* SOTA Avatar Container */
+/* Avatar Shell */
 .avatar-container {
-  display: inline-block;
   position: relative;
-  margin: 20px auto;
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 24px auto;
+  padding: 18px;
+  border-radius: 40px;
+  background: radial-gradient(circle at 30% 20%, rgba(255, 122, 24, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 30%, rgba(124, 58, 237, 0.2), transparent 60%),
+    rgba(12, 13, 24, 0.65);
+  box-shadow:
+    0 20px 65px rgba(10, 10, 10, 0.65),
+    inset 0 0 40px rgba(255, 255, 255, 0.04),
+    inset 0 0 2px rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease, box-shadow 0.4s ease;
+}
+
+.avatar-container::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  mix-blend-mode: screen;
 }
 
 .avatar-container:hover {
-  transform: scale(1.05);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow:
+    0 30px 80px rgba(12, 12, 12, 0.8),
+    inset 0 0 60px rgba(255, 255, 255, 0.06);
 }
 
 .avatar-container.speaking {
-  animation: gentle-float 3s ease-in-out infinite;
+  animation: holo-breathe 4.5s ease-in-out infinite;
 }
 
-/* Avatar SVG */
 .ti-sang-svg {
   display: block;
-  margin: 0 auto;
-  filter: drop-shadow(0 15px 40px rgba(204, 85, 0, 0.2));
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: min(420px, 85vw);
+  height: min(420px, 85vw);
+  filter: drop-shadow(0 30px 60px rgba(5, 5, 5, 0.7));
+  transition: filter 0.4s ease;
 }
 
 .avatar-container.speaking .ti-sang-svg {
-  filter: drop-shadow(0 20px 60px rgba(204, 85, 0, 0.35));
+  filter: drop-shadow(0 40px 75px rgba(255, 122, 24, 0.3));
 }
 
-/* Pulse Rings */
-.pulse-ring {
-  animation: pulse-animation 2s ease-out infinite;
+.avatar-ring {
+  animation: spectral-orbit 18s linear infinite;
   transform-origin: center;
 }
 
-.pulse-ring-2 {
-  animation: pulse-animation 2s ease-out infinite 0.5s;
+.avatar-ring.ring-1 {
+  animation-duration: 16s;
+}
+
+.avatar-ring.ring-2 {
+  animation-duration: 22s;
+}
+
+.voice-ring {
+  animation: voice-ring 2.6s ease-out infinite;
+}
+
+.avatar-voice-rings {
+  mix-blend-mode: screen;
+}
+
+.avatar-visor {
+  mix-blend-mode: screen;
+}
+
+.avatar-eyes {
+  transition: transform 0.12s ease;
+}
+
+.avatar-eyes.blink .avatar-eye-white,
+.avatar-eyes.blink .avatar-iris,
+.avatar-eyes.blink .avatar-pupil,
+.avatar-eyes.blink .avatar-eye-glint {
+  transform-origin: center;
+  transform: scaleY(0.08);
+  transition: transform 120ms ease;
+}
+
+.avatar-mouth path {
+  transition: filter 0.15s ease, opacity 0.15s ease;
+  filter: drop-shadow(0 2px 6px rgba(255, 122, 24, 0.35));
+}
+
+.avatar-container:not(.speaking) .avatar-mouth path:first-child {
+  opacity: 0.85;
+}
+
+.avatar-cheeks ellipse {
+  filter: blur(0.6px);
+  transition: opacity 0.2s ease;
+}
+
+.avatar-voice-waves path {
+  animation: wave-flow 2.4s ease-in-out infinite;
   transform-origin: center;
 }
 
-@keyframes pulse-animation {
-  0% {
-    opacity: 0.3;
-    transform: scale(0.95);
-  }
-  50% {
-    opacity: 0.15;
-    transform: scale(1.05);
-  }
-  100% {
-    opacity: 0.3;
-    transform: scale(0.95);
-  }
+.avatar-voice-waves path:last-child {
+  animation-delay: 0.4s;
 }
 
-/* Face Glow Effect */
-.face-glow {
-  filter: drop-shadow(0 0 10px rgba(204, 85, 0, 0.3));
-  transition: all 0.3s ease;
+.avatar-eq {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  justify-content: center;
 }
 
-.face-glow-active {
-  filter: drop-shadow(0 0 20px rgba(204, 85, 0, 0.6));
-  animation: glow-pulse 1.5s ease-in-out infinite;
+.avatar-eq-bar {
+  transform-origin: bottom center;
+  transition: transform 0.2s ease;
+  filter: drop-shadow(0 4px 10px rgba(110, 231, 183, 0.35));
 }
 
-@keyframes glow-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 15px rgba(204, 85, 0, 0.5));
-  }
-  50% {
-    filter: drop-shadow(0 0 25px rgba(204, 85, 0, 0.8));
-  }
+.avatar-eq[data-speaking="true"] .avatar-eq-bar {
+  animation: eq-dance 0.4s ease-in-out infinite alternate;
 }
 
-/* Hair Animation */
-.hair-group {
-  animation: hair-sway 4s ease-in-out infinite;
-  transform-origin: center top;
+.avatar-floating-nodes circle {
+  animation: node-drift 8s ease-in-out infinite;
 }
 
-@keyframes hair-sway {
-  0%, 100% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(1deg);
-  }
-  75% {
-    transform: rotate(-1deg);
-  }
+.avatar-floating-nodes circle:nth-child(2) {
+  animation-delay: 1.2s;
 }
 
-/* Eyes */
-.eyes {
-  transition: transform 0.1s ease;
+.avatar-floating-nodes circle:nth-child(3) {
+  animation-delay: 2s;
 }
 
-.eyes.blink circle,
-.eyes.blink ellipse {
-  transform-origin: center;
-  transform: scaleY(0.1);
-  transition: transform 100ms ease;
+.avatar-floating-nodes circle:nth-child(4) {
+  animation-delay: 3.1s;
 }
 
-/* Mouth Animation */
-.mouth {
-  transform-origin: center;
-  transform-box: fill-box;
-  transition: transform 60ms ease-out;
-}
-
-.mouth-group {
-  transform-origin: center;
-}
-
-.avatar-container.speaking .mouth-group {
-  animation: mouth-speak 0.15s ease-in-out infinite;
-}
-
-@keyframes mouth-speak {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(2px);
-  }
-}
-
-/* Sound Waves */
-.sound-waves path {
-  animation: sound-wave 1s ease-in-out infinite;
-  transform-origin: center;
-}
-
-.sound-waves path:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.sound-waves path:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.sound-waves path:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.sound-waves path:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-@keyframes sound-wave {
-  0%, 100% {
-    opacity: 0.3;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.2);
-  }
-}
-
-/* Particle Effects */
 .particles {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
 .particle {
   position: absolute;
-  width: 8px;
-  height: 8px;
-  background: radial-gradient(circle, #FF6B1A, #CC5500);
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 215, 128, 0.95), rgba(255, 122, 24, 0.1));
   opacity: 0;
-  animation: particle-float 2s ease-out infinite;
-  box-shadow: 0 0 10px rgba(204, 85, 0, 0.6);
+  animation: particle-float 2.4s ease-out infinite;
+  box-shadow: 0 0 12px rgba(255, 176, 96, 0.6);
 }
 
-.particle:nth-child(1) {
-  left: 20%;
-  animation-delay: 0s;
+.particle:nth-child(1) { left: 18%; animation-delay: 0s; }
+.particle:nth-child(2) { left: 36%; animation-delay: 0.3s; }
+.particle:nth-child(3) { left: 52%; animation-delay: 0.6s; }
+.particle:nth-child(4) { left: 68%; animation-delay: 0.9s; }
+.particle:nth-child(5) { left: 82%; animation-delay: 1.2s; }
+.particle:nth-child(6) { left: 45%; animation-delay: 1.5s; }
+
+@keyframes holo-breathe {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow:
+      0 20px 65px rgba(10, 10, 10, 0.65),
+      inset 0 0 40px rgba(255, 255, 255, 0.04);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow:
+      0 28px 75px rgba(255, 122, 24, 0.3),
+      inset 0 0 55px rgba(255, 255, 255, 0.08);
+  }
 }
 
-.particle:nth-child(2) {
-  left: 40%;
-  animation-delay: 0.4s;
+@keyframes spectral-orbit {
+  from {
+    transform: rotate(0deg);
+    stroke-dasharray: 30 30;
+  }
+  to {
+    transform: rotate(360deg);
+    stroke-dasharray: 60 15;
+  }
 }
 
-.particle:nth-child(3) {
-  left: 60%;
-  animation-delay: 0.8s;
+@keyframes voice-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.4;
+  }
+  60% {
+    transform: scale(1.05);
+    opacity: 0.1;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
 }
 
-.particle:nth-child(4) {
-  left: 80%;
-  animation-delay: 1.2s;
+@keyframes wave-flow {
+  0%, 100% {
+    opacity: 0.2;
+    filter: blur(0px);
+  }
+  50% {
+    opacity: 0.9;
+    filter: blur(1px);
+  }
 }
 
-.particle:nth-child(5) {
-  left: 50%;
-  animation-delay: 1.6s;
+@keyframes eq-dance {
+  from {
+    transform: scaleY(0.85);
+  }
+  to {
+    transform: scaleY(1.15);
+  }
+}
+
+@keyframes node-drift {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(8px, -18px) scale(1.15);
+    opacity: 1;
+  }
 }
 
 @keyframes particle-float {
   0% {
-    bottom: 30%;
+    bottom: 25%;
     opacity: 0;
-    transform: translateY(0) scale(0);
+    transform: translateY(0) scale(0.4);
   }
-  10% {
+  20% {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(-10px) scale(0.9);
   }
-  90% {
+  80% {
     opacity: 1;
   }
   100% {
-    bottom: 80%;
+    bottom: 85%;
     opacity: 0;
-    transform: translateY(-100px) scale(0.5);
-  }
-}
-
-/* Floating Animation */
-@keyframes gentle-float {
-  0%, 100% {
-    transform: translateY(0px) rotate(0deg);
-  }
-  33% {
-    transform: translateY(-8px) rotate(1deg);
-  }
-  66% {
-    transform: translateY(-4px) rotate(-1deg);
+    transform: translateY(-60px) scale(0.2);
   }
 }
 
