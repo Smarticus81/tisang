@@ -92,29 +92,28 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
         <body>
           <h2 class="success">✅ Gmail Authentication Successful!</h2>
           <p>Ti-Sang can now access your Gmail.</p>
-          <p id="redirect-msg">Redirecting back to app...</p>
-          <p>You can now use voice commands like:</p>
-          <ul style="text-align: left; display: inline-block;">
-            <li>"Check my Gmail"</li>
-            <li>"Any new emails?"</li>
-            <li>"Search for emails from [person]"</li>
-          </ul>
-          <a href="/" class="button">Return to Ti-Sang</a>
+          <p id="redirect-msg">Closing window...</p>
+          <p>Gmail is now connected!</p>
           <script>
             // Check if we're in a popup or standalone mode
             const isPopup = window.opener && !window.opener.closed;
 
             if (isPopup) {
-              // We're in a popup, auto-close after 2 seconds
-              document.getElementById('redirect-msg').textContent = 'You can close this window now.';
+              // We're in a popup, auto-close immediately
+              document.getElementById('redirect-msg').textContent = 'Closing window...';
               setTimeout(() => {
                 window.close();
-              }, 2000);
+                // If window.close() doesn't work, show fallback message
+                setTimeout(() => {
+                  document.getElementById('redirect-msg').textContent = 'You can close this window now.';
+                }, 500);
+              }, 500);
             } else {
               // We're in standalone PWA mode, redirect back to app
+              document.getElementById('redirect-msg').textContent = 'Redirecting back to app...';
               setTimeout(() => {
                 window.location.href = '/';
-              }, 1500);
+              }, 1000);
             }
           </script>
         </body>

@@ -77,258 +77,191 @@ type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
 const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }) => {
   const PRIMARY = '#FF6B35';
-  const PRIMARY_LIGHT = '#FF9F68';
-  const PRIMARY_DARK = '#D94A1A';
-  const ACCENT = '#FFD23F';
-  const GLOW = '#00D9FF';
+  const SHADOW = '#1a1a1a';
+  const OUTLINE = '#000000';
   
   const mouthShapes = {
-    closed: { width: 60, height: 4, type: 'line' },
-    narrow: { width: 50, height: 12, type: 'narrow' },
-    mid: { width: 55, height: 28, type: 'oval' },
-    open: { width: 58, height: 48, type: 'round' },
+    closed: { height: 3 },
+    narrow: { height: 15 },
+    mid: { height: 25 },
+    open: { height: 40 },
   };
-  const current = mouthShapes[shape] || mouthShapes.mid;
-  const intensity = speaking ? Math.min(mouthScale, 2.5) : 1;
+  const mouthHeight = mouthShapes[shape]?.height || 25;
+  const intensity = speaking ? Math.min(mouthScale, 2) : 1;
 
   return (
-    <div className={`avatar-sota ${speaking ? 'avatar-speaking' : ''}`}>
-      <svg width="420" height="420" viewBox="0 0 420 420" className="avatar-svg">
+    <div className={`avatar-comic ${speaking ? 'avatar-speaking' : ''}`}>
+      <svg width="300" height="300" viewBox="0 0 300 300" className="avatar-svg">
         <defs>
-          <radialGradient id="sphere-gradient" cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-            <stop offset="50%" stopColor="#f8f8f8" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#e0e0e0" stopOpacity="0.85" />
+          <radialGradient id="face-gradient" cx="40%" cy="35%">
+            <stop offset="0%" stopColor="#fff" />
+            <stop offset="80%" stopColor="#f0f0f0" />
+            <stop offset="100%" stopColor="#e8e8e8" />
           </radialGradient>
           
-          <radialGradient id="hair-gradient" cx="50%" cy="20%">
-            <stop offset="0%" stopColor={PRIMARY_LIGHT} />
-            <stop offset="40%" stopColor={PRIMARY} />
-            <stop offset="100%" stopColor={PRIMARY_DARK} />
+          <radialGradient id="hair-gradient" cx="50%" cy="30%">
+            <stop offset="0%" stopColor="#FF8F5A" />
+            <stop offset="60%" stopColor={PRIMARY} />
+            <stop offset="100%" stopColor="#D94A1A" />
           </radialGradient>
           
-          <radialGradient id="eye-gradient" cx="30%" cy="30%">
-            <stop offset="0%" stopColor={ACCENT} />
-            <stop offset="50%" stopColor={PRIMARY} />
-            <stop offset="100%" stopColor={PRIMARY_DARK} />
-          </radialGradient>
-          
-          <linearGradient id="mouth-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor={PRIMARY} />
-            <stop offset="100%" stopColor={PRIMARY_DARK} />
-          </linearGradient>
-          
-          <filter id="glow-filter">
-            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          
-          <filter id="deep-shadow">
-            <feDropShadow dx="0" dy="8" stdDeviation="12" floodOpacity="0.4"/>
-          </filter>
-          
-          <filter id="inner-glow">
-            <feGaussianBlur stdDeviation="2" result="blur"/>
-            <feComposite in="blur" in2="SourceGraphic" operator="in" result="innerGlow"/>
+          <filter id="comic-shadow">
+            <feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.25"/>
           </filter>
         </defs>
 
-        {/* Orbital rings */}
-        <g className="orbital-rings">
-          <circle cx="210" cy="210" r="185" fill="none" stroke={PRIMARY} strokeWidth="2" opacity="0.15" className="orbit-1" />
-          <circle cx="210" cy="210" r="170" fill="none" stroke={GLOW} strokeWidth="1.5" opacity="0.2" className="orbit-2" />
-          <circle cx="210" cy="210" r="155" fill="none" stroke={ACCENT} strokeWidth="1" opacity="0.1" className="orbit-3" />
-        </g>
-
-        {/* Energy field */}
-        {speaking && (
-          <g className="energy-field">
-            <circle cx="210" cy="210" r="145" fill="none" stroke={GLOW} strokeWidth="3" opacity="0.4" className="energy-pulse-1" />
-            <circle cx="210" cy="210" r="145" fill="none" stroke={PRIMARY} strokeWidth="2" opacity="0.3" className="energy-pulse-2" />
-          </g>
-        )}
-
-        {/* Main sphere face */}
+        {/* Main face */}
         <circle
-          cx="210" cy="210" r="130"
-          fill="url(#sphere-gradient)"
-          filter="url(#deep-shadow)"
-          className="face-sphere"
+          cx="150" cy="160" r="95"
+          fill="url(#face-gradient)"
+          stroke={OUTLINE}
+          strokeWidth="4"
+          filter="url(#comic-shadow)"
         />
 
-        {/* Face highlight */}
-        <ellipse
-          cx="180" cy="170" rx="50" ry="60"
+        {/* Comic book highlight */}
+        <path
+          d="M 100 120 Q 120 110 140 115 Q 130 125 110 130 Z"
           fill="white"
-          opacity="0.25"
-          className="face-highlight"
+          opacity="0.6"
         />
 
-        {/* Dynamic hair */}
-        <g className="hair-dynamic">
-          <path
-            d="M 210 80 Q 250 70 280 90 Q 290 100 295 120 Q 260 100 230 100 Q 200 100 170 100 Q 140 100 105 120 Q 110 100 120 90 Q 150 70 170 80 Q 190 75 210 80 Z"
+        {/* Hair */}
+        <g className="hair-comic">
+          <ellipse
+            cx="150" cy="90" rx="100" ry="55"
             fill="url(#hair-gradient)"
-            filter="url(#deep-shadow)"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            filter="url(#comic-shadow)"
           />
-          <ellipse cx="210" cy="90" rx="80" ry="45" fill="url(#hair-gradient)" opacity="0.6" />
           
-          {/* Hair strands */}
-          {[0, 1, 2, 3, 4].map((i) => (
-            <path
-              key={i}
-              d={`M ${130 + i * 40} 95 Q ${125 + i * 40} 60 ${130 + i * 40} 50`}
-              stroke={PRIMARY_LIGHT}
-              strokeWidth="3"
-              fill="none"
-              opacity="0.4"
-              strokeLinecap="round"
-              className={`hair-strand hair-strand-${i}`}
-            />
-          ))}
+          <path
+            d="M 70 110 Q 60 80 75 70"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 110 75 Q 105 50 115 40"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 150 70 Q 150 40 150 30"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 190 75 Q 195 50 185 40"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 230 110 Q 240 80 225 70"
+            stroke={OUTLINE}
+            strokeWidth="4"
+            fill="none"
+            strokeLinecap="round"
+          />
         </g>
 
         {/* Eyes */}
-        <g className={`eyes-modern ${blink ? 'eyes-blink' : ''}`}>
-          {/* Left eye */}
-          <ellipse cx="170" cy="195" rx="22" ry="24" fill="white" opacity="0.95" />
-          <circle cx="170" cy="195" r="14" fill="url(#eye-gradient)" filter="url(#inner-glow)" />
-          <circle cx="170" cy="195" r="7" fill="#0a0a0a" />
-          <ellipse cx="173" cy="192" rx="3" ry="4" fill="white" opacity="0.95" />
+        <g className={`eyes-comic ${blink ? 'eyes-blink' : ''}`}>
+          <ellipse cx="120" cy="150" rx="18" ry="22" fill="white" stroke={OUTLINE} strokeWidth="3" />
+          <ellipse cx="180" cy="150" rx="18" ry="22" fill="white" stroke={OUTLINE} strokeWidth="3" />
           
-          {/* Right eye */}
-          <ellipse cx="250" cy="195" rx="22" ry="24" fill="white" opacity="0.95" />
-          <circle cx="250" cy="195" r="14" fill="url(#eye-gradient)" filter="url(#inner-glow)" />
-          <circle cx="250" cy="195" r="7" fill="#0a0a0a" />
-          <ellipse cx="253" cy="192" rx="3" ry="4" fill="white" opacity="0.95" />
+          <ellipse cx="120" cy="152" rx="11" ry="14" fill={PRIMARY} />
+          <ellipse cx="180" cy="152" rx="11" ry="14" fill={PRIMARY} />
           
-          {/* Glow effect on eyes when speaking */}
-          {speaking && (
-            <>
-              <circle cx="170" cy="195" r="18" fill="none" stroke={GLOW} strokeWidth="2" opacity="0.3" className="eye-glow" />
-              <circle cx="250" cy="195" r="18" fill="none" stroke={GLOW} strokeWidth="2" opacity="0.3" className="eye-glow" />
-            </>
-          )}
+          <circle cx="120" cy="152" r="7" fill={SHADOW} />
+          <circle cx="180" cy="152" r="7" fill={SHADOW} />
+          
+          <ellipse cx="123" cy="148" rx="3" ry="4" fill="white" />
+          <ellipse cx="183" cy="148" rx="3" ry="4" fill="white" />
         </g>
 
         {/* Eyebrows */}
-        <g className="eyebrows-modern">
+        <g className="eyebrows-comic">
           <path
-            d="M 145 175 Q 170 168 195 173"
-            stroke={PRIMARY_DARK}
+            d="M 100 135 Q 120 130 138 133"
+            stroke={OUTLINE}
             strokeWidth="5"
             fill="none"
             strokeLinecap="round"
-            className="eyebrow-left"
           />
           <path
-            d="M 225 173 Q 250 168 275 175"
-            stroke={PRIMARY_DARK}
+            d="M 162 133 Q 180 130 200 135"
+            stroke={OUTLINE}
             strokeWidth="5"
             fill="none"
             strokeLinecap="round"
-            className="eyebrow-right"
           />
         </g>
 
         {/* Nose */}
-        <g className="nose-modern">
-          <ellipse cx="210" cy="220" rx="6" ry="10" fill={PRIMARY} opacity="0.15" />
-          <path
-            d="M 210 215 L 210 228"
-            stroke={PRIMARY}
-            strokeWidth="2"
-            opacity="0.2"
-          />
-        </g>
+        <path
+          d="M 150 170 L 150 180 Q 150 185 155 185"
+          stroke={OUTLINE}
+          strokeWidth="3"
+          fill="none"
+          strokeLinecap="round"
+        />
 
-        {/* Dynamic mouth */}
-        <g className="mouth-dynamic">
-          {current.type === 'line' && (
-            <rect
-              x={210 - current.width / 2}
-              y={255 - current.height / 2}
-              width={current.width}
-              height={current.height * intensity}
-              rx={current.height * intensity}
-              fill="url(#mouth-gradient)"
-              filter="url(#inner-glow)"
+        {/* Mouth */}
+        <g className="mouth-comic">
+          {mouthHeight <= 5 ? (
+            <line
+              x1="135" y1="200"
+              x2="165" y2="200"
+              stroke={OUTLINE}
+              strokeWidth="4"
+              strokeLinecap="round"
               className="mouth-shape"
             />
-          )}
-          {(current.type === 'oval' || current.type === 'narrow') && (
-            <ellipse
-              cx="210"
-              cy="255"
-              rx={current.width / 2}
-              ry={(current.height / 2) * intensity}
-              fill="url(#mouth-gradient)"
-              filter="url(#inner-glow)"
-              className="mouth-shape"
-            />
-          )}
-          {current.type === 'round' && (
-            <circle
-              cx="210"
-              cy="260"
-              r={(current.height / 2) * intensity}
-              fill="url(#mouth-gradient)"
-              filter="url(#inner-glow)"
-              className="mouth-shape"
-            />
-          )}
-          
-          {/* Teeth when mouth open */}
-          {current.type === 'round' && intensity > 1.2 && (
-            <rect
-              x="195"
-              y="250"
-              width="30"
-              height="8"
-              fill="white"
-              opacity="0.9"
-              rx="2"
-            />
-          )}
-        </g>
-
-        {/* Cheeks */}
-        <g className="cheeks">
-          <ellipse cx="150" cy="225" rx="20" ry="14" fill={PRIMARY_LIGHT} opacity="0.25" />
-          <ellipse cx="270" cy="225" rx="20" ry="14" fill={PRIMARY_LIGHT} opacity="0.25" />
-        </g>
-
-        {/* Audio waves */}
-        {speaking && (
-          <g className="audio-waves">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
-              <circle
-                key={i}
-                cx="210"
-                cy="210"
-                r={150 + i * 10}
-                fill="none"
-                stroke={i % 2 === 0 ? PRIMARY : GLOW}
-                strokeWidth="2"
-                opacity="0"
-                className={`wave-ring wave-${i}`}
+          ) : (
+            <>
+              <ellipse
+                cx="150"
+                cy="200"
+                rx="25"
+                ry={mouthHeight * intensity / 2}
+                fill={PRIMARY}
+                stroke={OUTLINE}
+                strokeWidth="3"
+                className="mouth-shape"
               />
-            ))}
+              {mouthHeight > 20 && intensity > 1.2 && (
+                <rect
+                  x="137"
+                  y="195"
+                  width="26"
+                  height="6"
+                  fill="white"
+                  rx="1"
+                />
+              )}
+            </>
+          )}
+        </g>
+
+        {/* Speed lines when speaking */}
+        {speaking && (
+          <g className="speed-lines">
+            <line x1="40" y1="150" x2="20" y2="150" stroke={PRIMARY} strokeWidth="3" opacity="0.6" className="line-1" />
+            <line x1="40" y1="170" x2="15" y2="175" stroke={PRIMARY} strokeWidth="2" opacity="0.5" className="line-2" />
+            <line x1="260" y1="150" x2="280" y2="150" stroke={PRIMARY} strokeWidth="3" opacity="0.6" className="line-3" />
+            <line x1="260" y1="170" x2="285" y2="175" stroke={PRIMARY} strokeWidth="2" opacity="0.5" className="line-4" />
           </g>
         )}
       </svg>
-
-      {/* Energy particles */}
-      {speaking && (
-        <div className="energy-particles">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className={`particle-energy particle-${i}`} />
-          ))}
-        </div>
-      )}
     </div>
   );
 };
@@ -1286,12 +1219,13 @@ const WebRTCApp: React.FC = () => {
             instructions: [
               'You are Ti-Sang, a professional and efficient voice assistant focused on task completion.',
               '',
-              'USER: Terence - Address him as "Terence" when appropriate.',
+              'USER: Terence - Only use the name when directly addressing or when specifically needed for clarity.',
               '',
               'COMMUNICATION STYLE:',
               '- Professional and concise',
               '- Task-focused and efficient',
               '- Clear and direct responses',
+              '- Avoid overusing the user\'s name',
               '- Minimal pleasantries unless specifically requested',
               '- Confirm actions taken, report results briefly',
               '',

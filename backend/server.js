@@ -203,12 +203,16 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
       </head>
       <body>
           <div class="success">✓ Gmail Authentication Successful!</div>
-          <div class="message">You can now close this window and return to Ti-Sang.</div>
+          <div class="message">Closing window...</div>
           <script>
-              // Try to close the window after a brief delay
+              // Immediately try to close the window
               setTimeout(() => {
                   window.close();
-              }, 2000);
+                  // If window.close() doesn't work (browser security), show message
+                  setTimeout(() => {
+                      document.body.innerHTML = '<div class="success">✓ Gmail Authentication Successful!</div><div class="message">You can close this window now.</div>';
+                  }, 500);
+              }, 500);
           </script>
       </body>
       </html>
