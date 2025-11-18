@@ -73,195 +73,20 @@ const wakeThreshold = 0.6;
 const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
 const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
-type MouthShape = 'closed' | 'mid' | 'open' | 'narrow';
 
-const TiSangAvatar: React.FC<{ speaking: boolean; mouthScale?: number; blink?: boolean; shape?: MouthShape }> = ({ speaking, mouthScale = 1, blink = false, shape = 'mid' }) => {
-  const PRIMARY = '#FF6B35';
-  const SHADOW = '#1a1a1a';
-  const OUTLINE = '#000000';
-  
-  const mouthShapes = {
-    closed: { height: 3 },
-    narrow: { height: 15 },
-    mid: { height: 25 },
-    open: { height: 40 },
-  };
-  const mouthHeight = mouthShapes[shape]?.height || 25;
-  const intensity = speaking ? Math.min(mouthScale, 2) : 1;
 
+const ReactiveCore: React.FC<{
+  state: 'idle' | 'listening' | 'thinking' | 'speaking';
+  volume?: number;
+}> = ({ state, volume = 0 }) => {
   return (
-    <div className={`avatar-comic ${speaking ? 'avatar-speaking' : ''}`}>
-      <svg width="300" height="300" viewBox="0 0 300 300" className="avatar-svg">
-        <defs>
-          <radialGradient id="face-gradient" cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#fff" />
-            <stop offset="80%" stopColor="#f0f0f0" />
-            <stop offset="100%" stopColor="#e8e8e8" />
-          </radialGradient>
-          
-          <radialGradient id="hair-gradient" cx="50%" cy="30%">
-            <stop offset="0%" stopColor="#FF8F5A" />
-            <stop offset="60%" stopColor={PRIMARY} />
-            <stop offset="100%" stopColor="#D94A1A" />
-          </radialGradient>
-          
-          <filter id="comic-shadow">
-            <feDropShadow dx="0" dy="4" stdDeviation="3" floodOpacity="0.25"/>
-          </filter>
-        </defs>
-
-        {/* Main face */}
-        <circle
-          cx="150" cy="160" r="95"
-          fill="url(#face-gradient)"
-          stroke={OUTLINE}
-          strokeWidth="4"
-          filter="url(#comic-shadow)"
-        />
-
-        {/* Comic book highlight */}
-        <path
-          d="M 100 120 Q 120 110 140 115 Q 130 125 110 130 Z"
-          fill="white"
-          opacity="0.6"
-        />
-
-        {/* Hair */}
-        <g className="hair-comic">
-          <ellipse
-            cx="150" cy="90" rx="100" ry="55"
-            fill="url(#hair-gradient)"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            filter="url(#comic-shadow)"
-          />
-          
-          <path
-            d="M 70 110 Q 60 80 75 70"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 110 75 Q 105 50 115 40"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 150 70 Q 150 40 150 30"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 190 75 Q 195 50 185 40"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 230 110 Q 240 80 225 70"
-            stroke={OUTLINE}
-            strokeWidth="4"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </g>
-
-        {/* Eyes */}
-        <g className={`eyes-comic ${blink ? 'eyes-blink' : ''}`}>
-          <ellipse cx="120" cy="150" rx="18" ry="22" fill="white" stroke={OUTLINE} strokeWidth="3" />
-          <ellipse cx="180" cy="150" rx="18" ry="22" fill="white" stroke={OUTLINE} strokeWidth="3" />
-          
-          <ellipse cx="120" cy="152" rx="11" ry="14" fill={PRIMARY} />
-          <ellipse cx="180" cy="152" rx="11" ry="14" fill={PRIMARY} />
-          
-          <circle cx="120" cy="152" r="7" fill={SHADOW} />
-          <circle cx="180" cy="152" r="7" fill={SHADOW} />
-          
-          <ellipse cx="123" cy="148" rx="3" ry="4" fill="white" />
-          <ellipse cx="183" cy="148" rx="3" ry="4" fill="white" />
-        </g>
-
-        {/* Eyebrows */}
-        <g className="eyebrows-comic">
-          <path
-            d="M 100 135 Q 120 130 138 133"
-            stroke={OUTLINE}
-            strokeWidth="5"
-            fill="none"
-            strokeLinecap="round"
-          />
-          <path
-            d="M 162 133 Q 180 130 200 135"
-            stroke={OUTLINE}
-            strokeWidth="5"
-            fill="none"
-            strokeLinecap="round"
-          />
-        </g>
-
-        {/* Nose */}
-        <path
-          d="M 150 170 L 150 180 Q 150 185 155 185"
-          stroke={OUTLINE}
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-        />
-
-        {/* Mouth */}
-        <g className="mouth-comic">
-          {mouthHeight <= 5 ? (
-            <line
-              x1="135" y1="200"
-              x2="165" y2="200"
-              stroke={OUTLINE}
-              strokeWidth="4"
-              strokeLinecap="round"
-              className="mouth-shape"
-            />
-          ) : (
-            <>
-              <ellipse
-                cx="150"
-                cy="200"
-                rx="25"
-                ry={mouthHeight * intensity / 2}
-                fill={PRIMARY}
-                stroke={OUTLINE}
-                strokeWidth="3"
-                className="mouth-shape"
-              />
-              {mouthHeight > 20 && intensity > 1.2 && (
-                <rect
-                  x="137"
-                  y="195"
-                  width="26"
-                  height="6"
-                  fill="white"
-                  rx="1"
-                />
-              )}
-            </>
-          )}
-        </g>
-
-        {/* Speed lines when speaking */}
-        {speaking && (
-          <g className="speed-lines">
-            <line x1="40" y1="150" x2="20" y2="150" stroke={PRIMARY} strokeWidth="3" opacity="0.6" className="line-1" />
-            <line x1="40" y1="170" x2="15" y2="175" stroke={PRIMARY} strokeWidth="2" opacity="0.5" className="line-2" />
-            <line x1="260" y1="150" x2="280" y2="150" stroke={PRIMARY} strokeWidth="3" opacity="0.6" className="line-3" />
-            <line x1="260" y1="170" x2="285" y2="175" stroke={PRIMARY} strokeWidth="2" opacity="0.5" className="line-4" />
-          </g>
-        )}
-      </svg>
+    <div className="core-container">
+      <div className={`core-orb ${state}`} style={{
+        transform: state === 'speaking' ? `scale(${1 + Math.min(volume, 0.5)})` : undefined
+      }} />
+      <div className="core-ring ring-1" />
+      <div className="core-ring ring-2" />
+      <div className="core-ring ring-3" />
     </div>
   );
 };
@@ -273,8 +98,7 @@ const WebRTCApp: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mouthScale, setMouthScale] = useState(1);
-  const [mouthShape, setMouthShape] = useState<MouthShape>('mid');
-  const [blink, setBlink] = useState(false);
+
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false); // Changed to false by default
   const [pendingWakeStart, setPendingWakeStart] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
@@ -284,7 +108,7 @@ const WebRTCApp: React.FC = () => {
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const mouthScaleRef = useRef(1);
-  const mouthShapeRef = useRef<MouthShape>('mid');
+
   const rafRef = useRef<number | null>(null);
   const blinkIntervalRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -298,18 +122,18 @@ const WebRTCApp: React.FC = () => {
   const lastWakeTimeRef = useRef<number>(0);
   const tokenRef = useRef<{ value: string; expiresAt?: number } | null>(null);
   const shouldGreetOnConnectRef = useRef<boolean>(false);
-  const visemeDecayTimerRef = useRef<number | null>(null);
+
 
   // Wake word detection
   const detectWakeWord = useCallback((text: string) => {
     const cleaned = sanitize(text);
     let best = 0;
-    
+
     // Check against all wake words
     for (const wakeWord of WAKE_WORDS) {
       const cleanWake = sanitize(wakeWord);
       let currentBest = similarity(cleaned, cleanWake);
-      
+
       // Also check substrings
       const len = cleanWake.length;
       for (let w = Math.max(3, len - 2); w <= len + 3; w++) {
@@ -318,15 +142,15 @@ const WebRTCApp: React.FC = () => {
           currentBest = Math.max(currentBest, similarity(chunk, cleanWake));
         }
       }
-      
+
       // Check if wake word appears as substring with word boundaries
       if (cleaned.includes(cleanWake.replace(/\s/g, ''))) {
         currentBest = Math.max(currentBest, 0.85);
       }
-      
+
       best = Math.max(best, currentBest);
     }
-    
+
     return best >= wakeThreshold;
   }, []);
 
@@ -334,18 +158,18 @@ const WebRTCApp: React.FC = () => {
   const detectVoiceCommands = useCallback((text: string) => {
     const cleaned = sanitize(text);
     console.log('🔍 Checking command in:', cleaned);
-    
+
     // Commands to return to wake word mode
     const wakeCommands = [
       'ok bye', 'okay bye', 'bye ti-sang', 'thanks ti-sang', 'thank you ti-sang',
       'see you later', 'talk to you later', 'goodbye', 'bye bye', 'bye', 'thanks'
     ];
-    
+
     // Commands to shut down completely
     const shutdownCommands = [
       'shut down', 'shutdown', 'stop listening', 'turn off', 'go to sleep', 'stop'
     ];
-    
+
     for (const cmd of wakeCommands) {
       const cmdClean = sanitize(cmd);
       if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
@@ -353,7 +177,7 @@ const WebRTCApp: React.FC = () => {
         return 'wake_mode';
       }
     }
-    
+
     for (const cmd of shutdownCommands) {
       const cmdClean = sanitize(cmd);
       if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
@@ -361,7 +185,7 @@ const WebRTCApp: React.FC = () => {
         return 'shutdown';
       }
     }
-    
+
     return null;
   }, []);
 
@@ -397,12 +221,12 @@ const WebRTCApp: React.FC = () => {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const base = isLocal ? 'http://localhost:3000' : '';
       const response = await fetch(`${base}/api/gmail/emails?maxResults=${maxResults}`);
-      
+
       if (!response.ok) {
         const error = await response.json();
         return { error: error.error || 'Failed to check Gmail' };
       }
-      
+
       const data = await response.json();
       return { emails: data.emails };
     } catch {
@@ -419,12 +243,12 @@ const WebRTCApp: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, maxResults })
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         return { error: error.error || 'Gmail search failed' };
       }
-      
+
       const data = await response.json();
       return { emails: data.emails };
     } catch {
@@ -441,12 +265,12 @@ const WebRTCApp: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, maxResults })
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         return { error: error.error || 'Web search failed' };
       }
-      
+
       const data = await response.json();
       return { results: data.results };
     } catch {
@@ -463,12 +287,12 @@ const WebRTCApp: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, maxResults })
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         return { error: error.error || 'News search failed' };
       }
-      
+
       const data = await response.json();
       return { results: data.results };
     } catch {
@@ -494,7 +318,7 @@ const WebRTCApp: React.FC = () => {
 
       // Detect if running as standalone PWA
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                          (window.navigator as any).standalone === true;
+        (window.navigator as any).standalone === true;
 
       if (isStandalone) {
         // In standalone mode, store return URL and redirect the whole page
@@ -914,7 +738,7 @@ const WebRTCApp: React.FC = () => {
       const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       const base = isLocal ? 'http://localhost:3000' : '';
       const response = await fetch(`${base}/api/status`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setGmailStatus(data.gmail ? 'available' : 'unavailable');
@@ -948,7 +772,7 @@ const WebRTCApp: React.FC = () => {
 
       // Detect if running as standalone PWA
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                          (window.navigator as any).standalone === true;
+        (window.navigator as any).standalone === true;
 
       if (isStandalone) {
         // In standalone mode, redirect the whole page
@@ -984,7 +808,7 @@ const WebRTCApp: React.FC = () => {
         console.warn('SpeechRecognition not supported in this browser.');
         return;
       }
-      
+
       // Prevent multiple instances
       if (wakeStartingRef.current || wakeRunningRef.current || recognizerRef.current) {
         console.log('Wake recognition already running or starting');
@@ -1011,12 +835,12 @@ const WebRTCApp: React.FC = () => {
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
         if (!wakeShouldRunRef.current) return; // Ignore results if we're shutting down
-        
+
         const results = event.results;
         const idx = event.resultIndex;
         const transcript = results[idx][0].transcript;
         const confidence = results[idx][0].confidence;
-        
+
         if (results[idx].isFinal || (confidence ?? 0) > 0.7) {
           const now = Date.now();
           const onCooldown = now - lastWakeTimeRef.current < 3000;
@@ -1032,17 +856,17 @@ const WebRTCApp: React.FC = () => {
       recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
         console.warn('⚠️ SpeechRecognition error:', e.error, e.message);
         wakeRunningRef.current = false;
-        
+
         // Only restart for recoverable errors and if we should still be running
         const recoverable = e.error === 'no-speech' || e.error === 'network';
         const shouldRestart = recoverable && wakeShouldRunRef.current && !listening && wakeWordEnabled;
-        
+
         if (e.error === 'aborted') {
           // Don't restart on aborted - this usually means we're stopping intentionally
           console.log('🛑 Speech recognition aborted - not restarting');
           return;
         }
-        
+
         if (shouldRestart) {
           // Longer delay to prevent rapid restart cycles
           if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
@@ -1058,7 +882,7 @@ const WebRTCApp: React.FC = () => {
       recognition.onend = () => {
         console.log('🔚 Wake recognition ended');
         wakeRunningRef.current = false;
-        
+
         // Only restart if we should still be running
         if (wakeWordEnabled && wakeShouldRunRef.current && !listening) {
           if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
@@ -1072,16 +896,16 @@ const WebRTCApp: React.FC = () => {
       };
 
       recognizerRef.current = recognition;
-      
-      try { 
-        wakeStartingRef.current = true; 
-        recognition.start(); 
+
+      try {
+        wakeStartingRef.current = true;
+        recognition.start();
       } catch (error) {
         console.error('❌ Failed to start recognition:', error);
         wakeStartingRef.current = false;
         recognizerRef.current = null;
       }
-      
+
     } catch (e) {
       console.warn('❌ Failed to start wake recognition:', e);
       wakeStartingRef.current = false;
@@ -1091,37 +915,37 @@ const WebRTCApp: React.FC = () => {
   const stopWakeRecognition = useCallback(() => {
     console.log('🛑 Stopping wake recognition');
     const rec = recognizerRef.current;
-    
+
     // Stop should run flag first to prevent restarts
     wakeShouldRunRef.current = false;
-    
+
     // Clear any pending restart timeouts
-    if (wakeRestartTimeoutRef.current) { 
-      window.clearTimeout(wakeRestartTimeoutRef.current); 
-      wakeRestartTimeoutRef.current = null; 
+    if (wakeRestartTimeoutRef.current) {
+      window.clearTimeout(wakeRestartTimeoutRef.current);
+      wakeRestartTimeoutRef.current = null;
     }
-    
+
     if (rec) {
       try {
         // Clear event handlers to prevent callbacks during shutdown
-        rec.onresult = null; 
-        rec.onend = null; 
-        rec.onerror = null; 
+        rec.onresult = null;
+        rec.onend = null;
+        rec.onerror = null;
         rec.onstart = null;
-        
+
         // Stop the recognition
         rec.stop();
       } catch (error) {
         console.warn('⚠️ Error stopping recognition:', error);
       }
-      
+
       recognizerRef.current = null;
     }
-    
+
     // Reset state flags
     wakeRunningRef.current = false;
     wakeStartingRef.current = false;
-    
+
     console.log('✅ Wake word recognition stopped');
   }, []);
 
@@ -1139,14 +963,14 @@ const WebRTCApp: React.FC = () => {
 
       // Create WebRTC peer connection
       const pc = new RTCPeerConnection();
-      
+
       // Set up audio element for model output
       const audioElement = document.createElement("audio");
       audioElement.autoplay = true;
       pc.ontrack = (e) => {
         audioElement.srcObject = e.streams[0];
         console.log('🎵 Connected to OpenAI audio stream');
-        
+
         // Set up audio analysis for lip-sync
         try {
           const AudioCtor =
@@ -1157,42 +981,42 @@ const WebRTCApp: React.FC = () => {
             return;
           }
           if (!audioContextRef.current) audioContextRef.current = audioContext;
-          
+
           const source = audioContext.createMediaElementSource(audioElement);
           const analyser = audioContext.createAnalyser();
           analyser.fftSize = 128;
           analyser.smoothingTimeConstant = 0.6;
-          
+
           source.connect(analyser);
           source.connect(audioContext.destination);
           analyserRef.current = analyser;
-          
+
           const analyzeAudio = () => {
             if (!analyserRef.current) return;
-            
+
             const dataArray = new Uint8Array(analyserRef.current.fftSize);
             analyserRef.current.getByteTimeDomainData(dataArray);
-            
+
             let sum = 0;
             for (let i = 0; i < dataArray.length; i++) {
               const centered = (dataArray[i] - 128) / 128;
               sum += centered * centered;
             }
             const rms = Math.sqrt(sum / dataArray.length);
-            
+
             const targetScale = 1.0 + Math.min(1.4, rms * 8);
             mouthScaleRef.current = mouthScaleRef.current * 0.7 + targetScale * 0.3;
-            
+
             if (rafRef.current == null) {
               rafRef.current = requestAnimationFrame(() => {
                 setMouthScale(mouthScaleRef.current);
                 rafRef.current = null;
               });
             }
-            
+
             animationFrameRef.current = requestAnimationFrame(analyzeAudio);
           };
-          
+
           analyzeAudio();
           console.log('✅ Audio analysis started');
         } catch (e) {
@@ -1206,12 +1030,12 @@ const WebRTCApp: React.FC = () => {
 
       // Set up data channel for events
       const dataChannel = pc.createDataChannel("oai-events");
-      
+
       dataChannel.onopen = () => {
         console.log('🔗 Data channel opened');
         setConnected(true);
         setListening(true);
-        
+
         // Send session configuration
         const sessionUpdateEvent = {
           type: "session.update",
@@ -1262,7 +1086,7 @@ const WebRTCApp: React.FC = () => {
                 }
               },
               {
-                type: "function", 
+                type: "function",
                 name: "search_gmail",
                 description: "Search Gmail for specific emails",
                 parameters: {
@@ -1282,7 +1106,7 @@ const WebRTCApp: React.FC = () => {
               },
               {
                 type: "function",
-                name: "web_search", 
+                name: "web_search",
                 description: "Search the internet for information",
                 parameters: {
                   type: "object",
@@ -1292,7 +1116,7 @@ const WebRTCApp: React.FC = () => {
                       description: "Search query"
                     },
                     maxResults: {
-                      type: "number", 
+                      type: "number",
                       description: "Maximum number of results (default: 5)"
                     }
                   },
@@ -1611,7 +1435,7 @@ const WebRTCApp: React.FC = () => {
           }
         };
         dataChannel.send(JSON.stringify(sessionUpdateEvent));
-        
+
         // Send greeting if triggered by wake word
         if (shouldGreetOnConnectRef.current) {
           shouldGreetOnConnectRef.current = false;
@@ -1625,7 +1449,7 @@ const WebRTCApp: React.FC = () => {
               }
             };
             dataChannel.send(JSON.stringify(greetEvent));
-            
+
             const responseEvent = { type: "response.create" };
             dataChannel.send(JSON.stringify(responseEvent));
           }, 100);
@@ -1636,53 +1460,15 @@ const WebRTCApp: React.FC = () => {
         try {
           const data = JSON.parse(event.data);
           console.log('📨 Received event:', data.type);
-          
+
           if (data.type === 'response.audio.start') {
             setSpeaking(true);
-            mouthShapeRef.current = 'mid';
-            setMouthShape('mid');
-            
-            if (blinkIntervalRef.current == null) {
-              blinkIntervalRef.current = window.setInterval(() => {
-                setBlink(true);
-                setTimeout(() => setBlink(false), 120);
-              }, 3200);
-            }
+            setSpeaking(true);
           } else if (data.type === 'response.audio.done') {
             setSpeaking(false);
+            setSpeaking(false);
             mouthScaleRef.current = 1;
-            mouthShapeRef.current = 'closed';
-            setMouthShape('closed');
-            
-            if (blinkIntervalRef.current != null) {
-              clearInterval(blinkIntervalRef.current);
-              blinkIntervalRef.current = null;
-            }
-          } else if (data.type === 'response.audio_transcript.delta') {
-            const delta = data.delta || '';
-            if (delta) {
-              const last = (delta.match(/[a-z]+/gi)?.pop() || '').toLowerCase();
-              const ch = last.slice(-1);
-              let shape: MouthShape = 'mid';
-              if (!last) shape = 'closed';
-              else if ('aeiou'.includes(ch)) shape = 'open';
-              else if (/s|z|f|v|sh|ch|th|j|x/.test(last)) shape = 'narrow';
-              else if (/[pbm]$/.test(last)) shape = 'closed';
-              else shape = 'mid';
-
-              mouthShapeRef.current = shape;
-              setMouthShape(shape);
-
-              if (visemeDecayTimerRef.current) window.clearTimeout(visemeDecayTimerRef.current);
-              visemeDecayTimerRef.current = window.setTimeout(() => {
-                mouthShapeRef.current = 'mid';
-                setMouthShape('mid');
-                visemeDecayTimerRef.current = window.setTimeout(() => {
-                  mouthShapeRef.current = 'closed';
-                  setMouthShape('closed');
-                }, 140);
-              }, 120);
-            }
+            // Removed viseme logic for new avatar
           } else if (data.type === 'conversation.item.input_audio_transcription.completed') {
             // Check user's speech for commands
             const transcript = data.transcript || '';
@@ -1734,12 +1520,12 @@ const WebRTCApp: React.FC = () => {
             // Function call complete - execute the function
             const { call_id, name, arguments: args } = data;
             console.log('📞 Function call:', name, args);
-            
+
             (async () => {
               try {
                 let result = null;
                 const parsedArgs = JSON.parse(args || '{}');
-                
+
                 switch (name) {
                   case 'check_gmail':
                     result = await handleGmailCheck(parsedArgs.maxResults || 5);
@@ -1819,7 +1605,7 @@ const WebRTCApp: React.FC = () => {
                   default:
                     result = { error: `Unknown function: ${name}` };
                 }
-                
+
                 // Send function result back
                 const responseEvent = {
                   type: "conversation.item.create",
@@ -1830,17 +1616,17 @@ const WebRTCApp: React.FC = () => {
                   }
                 };
                 dataChannel.send(JSON.stringify(responseEvent));
-                
+
                 // Continue the response
                 const continueEvent = { type: "response.create" };
                 dataChannel.send(JSON.stringify(continueEvent));
-                
+
               } catch (error) {
                 console.error('Function call error:', error);
                 const errorEvent = {
                   type: "conversation.item.create",
                   item: {
-                    type: "function_call_output", 
+                    type: "function_call_output",
                     call_id,
                     output: JSON.stringify({ error: (error as Error).message || 'Unknown error' })
                   }
@@ -1890,13 +1676,13 @@ const WebRTCApp: React.FC = () => {
       // Stop wake recognition while actively engaged
       stopWakeRecognition();
 
-        console.log('✅ WebRTC connection established with OpenAI Realtime API');
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to start listening');
-        console.error('WebRTC connection error:', err);
-      } finally {
-        setLoading(false);
-      }
+      console.log('✅ WebRTC connection established with OpenAI Realtime API');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start listening');
+      console.error('WebRTC connection error:', err);
+    } finally {
+      setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [connected, loading, fetchEphemeralToken, stopWakeRecognition, handleGmailCheck, handleGmailSearch, handleWebSearch, handleNewsSearch, handleGmailSetup, detectVoiceCommands]);  // Stop listening and disconnect
   const handleStopListening = useCallback(() => {
@@ -1913,11 +1699,11 @@ const WebRTCApp: React.FC = () => {
       stream.getTracks().forEach(track => track.stop());
       audioElementRef.current = null;
     }
-    
+
     setListening(false);
     setConnected(false);
     setSpeaking(false);
-    
+
     if (rafRef.current) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -1986,174 +1772,98 @@ const WebRTCApp: React.FC = () => {
     })();
   }, [fetchEphemeralToken, checkGmailStatus]);
 
+  // Determine Core State
+  let coreState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
+  if (loading) coreState = 'thinking';
+  else if (speaking) coreState = 'speaking';
+  else if (listening) coreState = 'listening';
+
   return (
-    <div className="App" style={{ textAlign: 'center', marginTop: 40 }}>
-      <h1 style={{ color: '#CC5500' }}>Ti-Sang</h1>
+    <>
+      <div className="deep-space-bg" />
+      <div className="star-field" />
 
-      {error && (
-        <div style={{
-          backgroundColor: '#ffebee',
-          color: '#c62828',
-          padding: 10,
-          borderRadius: 8,
-          margin: '0 20px 20px',
-          border: '1px solid #ef5350'
-        }}>
-          Error: {error}
+      <div className="app-container">
+        <div className="status-indicators">
+          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title="WebRTC Connection" />
+          <div className={`status-dot ${gmailStatus === 'available' ? 'connected' : 'error'}`} title="Gmail Connection" />
         </div>
-      )}
 
-      <TiSangAvatar speaking={speaking} mouthScale={mouthScale} blink={blink} shape={mouthShape} />
-      
-      <div style={{ marginTop: 20 }}>
-        <div style={{ marginBottom: 16 }}>
+        <ReactiveCore state={coreState} volume={mouthScale - 1} />
+
+        <div className="hud-transcript">
+          {error && <div style={{ color: '#ff4444' }}>{error}</div>}
+          {!error && (
+            <>
+              {listening ? (
+                <span className="user-text">Listening...</span>
+              ) : speaking ? (
+                <span className="agent-text">Speaking...</span>
+              ) : loading ? (
+                <span className="agent-text">Connecting...</span>
+              ) : (
+                <span className="user-text">Say "Ti-Sang" or press Start</span>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="hud-controls">
           <button
+            className={`hud-btn ${wakeWordEnabled ? 'active' : ''}`}
             onClick={() => {
               const next = !wakeWordEnabled;
               setWakeWordEnabled(next);
-              if (next && !listening) startWakeRecognition(); 
+              if (next && !listening) startWakeRecognition();
               else stopWakeRecognition();
             }}
-            style={{ 
-              backgroundColor: wakeWordEnabled ? '#CC5500' : '#aaa',
-              color: '#fff',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              marginRight: '10px'
-            }}
+            title="Toggle Wake Word"
           >
-            {wakeWordEnabled ? '🎤 Wake Word: ON' : '⏸️ Wake Word: OFF'}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
           </button>
-          
-          {wakeWordEnabled && !listening && (
-            <span style={{ 
-              fontSize: '14px', 
-              color: '#666',
-              fontStyle: 'italic'
-            }}>
-              Say "Ti-sang" to start conversation
-            </span>
-          )}
-        </div>
-        
-        {!listening ? (
-          <button
-            onClick={handleStartListening}
-            disabled={loading}
-            style={{
-              backgroundColor: loading ? '#ccc' : '#CC5500',
-              color: '#fff',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {loading ? 'Connecting...' : '🔗 Start Direct Chat'}
-          </button>
-        ) : (
-          <div>
-            <button
-              onClick={handleStopListening}
-              style={{ 
-                backgroundColor: '#CC5500', 
-                color: '#fff',
-                border: 'none',
-                padding: '12px 24px',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                marginRight: '10px'
-              }}
-            >
-              🛑 Stop Listening
-            </button>
-            <div style={{ 
-              marginTop: '10px',
-              fontSize: '14px', 
-              color: '#666',
-              fontStyle: 'italic'
-            }}>
-              Say "ok bye" to return to wake word mode, or "shut down" to stop completely
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* Gmail Setup Section */}
-      <div style={{ 
-        marginTop: 30, 
-        padding: 20, 
-        backgroundColor: '#f8f8f8', 
-        borderRadius: 10,
-        maxWidth: 400,
-        margin: '30px auto 0'
-      }}>
-        <h3 style={{ color: '#CC5500', margin: '0 0 15px 0', textAlign: 'center' }}>
-          📧 Gmail Integration
-        </h3>
-        
-        <div style={{ textAlign: 'center' }}>
-          {gmailStatus === 'available' ? (
-            <div style={{ color: '#28a745' }}>
-              ✅ Gmail is connected and ready!
-              <br />
-              <small style={{ color: '#666', fontSize: '12px' }}>
-                Try saying "Check my Gmail" or "Any new emails?"
-              </small>
-            </div>
-          ) : gmailStatus === 'unavailable' ? (
-            <div>
-              <div style={{ color: '#666', marginBottom: 10 }}>
-                Gmail not set up yet
-              </div>
-              <button
-                onClick={triggerGmailSetup}
-                style={{
-                  backgroundColor: '#1a73e8',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '5px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  marginRight: '10px'
-                }}
-              >
-                🔗 Set Up Gmail
-              </button>
-              <button
-                onClick={() => window.open('/gmail-setup', 'gmail-setup', 'width=900,height=700,scrollbars=yes,resizable=yes')}
-                style={{
-                  backgroundColor: '#6c757d',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '5px',
-                  fontSize: '14px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer'
-                }}
-              >
-                📖 Setup Guide
-              </button>
-            </div>
+          {!listening ? (
+            <button
+              className="hud-btn"
+              onClick={handleStartListening}
+              disabled={loading}
+              title="Start Chat"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </button>
           ) : (
-            <div style={{ color: '#666' }}>
-              Checking Gmail status...
-            </div>
+            <button
+              className="hud-btn active"
+              onClick={handleStopListening}
+              title="Stop Chat"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="9" width="6" height="6" />
+                <circle cx="12" cy="12" r="10" />
+              </svg>
+            </button>
           )}
+
+          <button
+            className={`hud-btn ${gmailStatus === 'available' ? 'active' : ''}`}
+            onClick={triggerGmailSetup}
+            title="Gmail Settings"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
