@@ -6,7 +6,7 @@
   --accent-amber: #ffaa00;
   --text-main: rgba(255, 255, 255, 0.95);
   --text-dim: rgba(255, 255, 255, 0.6);
-  
+
   --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 }
@@ -20,6 +20,8 @@ body {
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Deep Space Background */
@@ -30,7 +32,7 @@ body {
   width: 100%;
   height: 100%;
   z-index: -1;
-  background: 
+  background:
     radial-gradient(circle at 50% 50%, #1a1a2e 0%, #000000 100%);
 }
 
@@ -40,13 +42,13 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
+  background-image:
     radial-gradient(1px 1px at 10% 10%, white 100%, transparent),
     radial-gradient(1px 1px at 20% 20%, white 100%, transparent),
-    radial-gradient(2px 2px at 30% 30%, rgba(255,255,255,0.5) 100%, transparent),
+    radial-gradient(2px 2px at 30% 30%, rgba(255, 255, 255, 0.5) 100%, transparent),
     radial-gradient(1px 1px at 40% 40%, white 100%, transparent),
     radial-gradient(1px 1px at 50% 50%, white 100%, transparent),
-    radial-gradient(2px 2px at 60% 60%, rgba(255,255,255,0.5) 100%, transparent),
+    radial-gradient(2px 2px at 60% 60%, rgba(255, 255, 255, 0.5) 100%, transparent),
     radial-gradient(1px 1px at 70% 70%, white 100%, transparent),
     radial-gradient(1px 1px at 80% 80%, white 100%, transparent),
     radial-gradient(1px 1px at 90% 90%, white 100%, transparent);
@@ -56,8 +58,13 @@ body {
 }
 
 @keyframes star-drift {
-  from { transform: translateY(0); }
-  to { transform: translateY(-550px); }
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-550px);
+  }
 }
 
 /* Main Layout */
@@ -85,11 +92,11 @@ body {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), var(--primary-cyan) 40%, rgba(0,0,0,0) 70%);
-  box-shadow: 
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--primary-cyan) 40%, rgba(0, 0, 0, 0) 70%);
+  box-shadow:
     0 0 30px var(--primary-cyan),
     0 0 60px var(--primary-cyan),
-    inset 0 0 20px rgba(255,255,255,0.5);
+    inset 0 0 20px rgba(255, 255, 255, 0.5);
   position: relative;
   z-index: 10;
   transition: all 0.3s var(--ease-out-expo);
@@ -97,16 +104,16 @@ body {
 
 /* Core States */
 .core-orb.listening {
-  box-shadow: 
+  box-shadow:
     0 0 40px var(--primary-cyan),
     0 0 80px var(--primary-cyan),
-    inset 0 0 30px rgba(255,255,255,0.8);
+    inset 0 0 30px rgba(255, 255, 255, 0.8);
   animation: pulse-fast 1s infinite alternate;
 }
 
 .core-orb.thinking {
-  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), var(--secondary-violet) 40%, rgba(0,0,0,0) 70%);
-  box-shadow: 
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--secondary-violet) 40%, rgba(0, 0, 0, 0) 70%);
+  box-shadow:
     0 0 30px var(--secondary-violet),
     0 0 60px var(--secondary-violet);
   animation: breathe 3s infinite ease-in-out;
@@ -148,30 +155,78 @@ body {
 }
 
 /* Animations */
-@keyframes spin { 100% { transform: rotate(360deg); } }
-@keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin-reverse {
+  100% {
+    transform: rotate(-360deg);
+  }
+}
 
 @keyframes breathe {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.05); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
 }
 
 @keyframes pulse-fast {
-  0% { transform: scale(0.95); box-shadow: 0 0 20px var(--primary-cyan); }
-  100% { transform: scale(1.1); box-shadow: 0 0 60px var(--primary-cyan); }
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 20px var(--primary-cyan);
+  }
+
+  100% {
+    transform: scale(1.1);
+    box-shadow: 0 0 60px var(--primary-cyan);
+  }
 }
 
 @keyframes vibrate {
-  0% { transform: translate(0, 0) scale(1); }
-  25% { transform: translate(1px, 1px) scale(1.02); }
-  50% { transform: translate(-1px, -1px) scale(1); }
-  75% { transform: translate(-1px, 1px) scale(1.02); }
-  100% { transform: translate(1px, -1px) scale(1); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  25% {
+    transform: translate(1px, 1px) scale(1.02);
+  }
+
+  50% {
+    transform: translate(-1px, -1px) scale(1);
+  }
+
+  75% {
+    transform: translate(-1px, 1px) scale(1.02);
+  }
+
+  100% {
+    transform: translate(1px, -1px) scale(1);
+  }
 }
 
 @keyframes pulse-ring {
-  0%, 100% { transform: scale(1); opacity: 0.3; }
-  50% { transform: scale(1.05); opacity: 0.6; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.6;
+  }
 }
 
 /* HUD Interface */
@@ -186,8 +241,15 @@ body {
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-.user-text { color: var(--text-dim); font-style: italic; }
-.agent-text { color: var(--primary-cyan); font-weight: 400; }
+.user-text {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.agent-text {
+  color: var(--primary-cyan);
+  font-weight: 400;
+}
 
 .hud-controls {
   position: fixed;
@@ -199,7 +261,7 @@ body {
   border-radius: 40px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .hud-btn {
@@ -244,7 +306,7 @@ body {
   height: 8px;
   border-radius: 50%;
   background: #333;
-  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 .status-dot.connected {
@@ -255,4 +317,234 @@ body {
 .status-dot.error {
   background: #ff4444;
   box-shadow: 0 0 10px #ff4444;
+}
+
+/* ============================================
+   MOBILE OPTIMIZATIONS
+   ============================================ */
+
+/* Tablets and smaller */
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 100dvh;
+    /* Dynamic viewport height for mobile browsers */
+  }
+
+  .app-container {
+    height: 100dvh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    justify-content: space-between;
+    padding-top: max(env(safe-area-inset-top), 20px);
+    padding-bottom: max(env(safe-area-inset-bottom), 20px);
+  }
+
+  /* Smaller Core for mobile */
+  .core-container {
+    width: 200px;
+    height: 200px;
+    margin-bottom: 20px;
+    margin-top: 40px;
+  }
+
+  .core-orb {
+    width: 80px;
+    height: 80px;
+    box-shadow:
+      0 0 20px var(--primary-cyan),
+      0 0 40px var(--primary-cyan),
+      inset 0 0 15px rgba(255, 255, 255, 0.5);
+  }
+
+  .core-orb.listening {
+    box-shadow:
+      0 0 30px var(--primary-cyan),
+      0 0 60px var(--primary-cyan),
+      inset 0 0 20px rgba(255, 255, 255, 0.8);
+  }
+
+  /* Smaller rings for mobile */
+  .ring-1 {
+    width: 120px;
+    height: 120px;
+  }
+
+  .ring-2 {
+    width: 160px;
+    height: 160px;
+  }
+
+  .ring-3 {
+    width: 190px;
+    height: 190px;
+  }
+
+  /* Transcript adjustments */
+  .hud-transcript {
+    font-size: 1rem;
+    max-width: 90vw;
+    min-height: 50px;
+    padding: 0 20px;
+    margin-top: 10px;
+  }
+
+  /* Touch-friendly controls */
+  .hud-controls {
+    bottom: max(env(safe-area-inset-bottom), 20px);
+    left: 50%;
+    transform: translateX(-50%);
+    gap: 15px;
+    padding: 12px 20px;
+    border-radius: 30px;
+  }
+
+  .hud-btn {
+    padding: 12px;
+    min-width: 48px;
+    min-height: 48px;
+  }
+
+  .hud-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Status indicators */
+  .status-indicators {
+    top: max(env(safe-area-inset-top), 10px);
+    right: 15px;
+    gap: 8px;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Reduce star field animation on mobile for performance */
+  .star-field {
+    opacity: 0.2;
+    animation: star-drift 150s linear infinite;
+  }
+}
+
+/* Extra small screens (iPhone SE, etc.) */
+@media (max-width: 375px) {
+  .core-container {
+    width: 180px;
+    height: 180px;
+    margin-bottom: 15px;
+  }
+
+  .core-orb {
+    width: 70px;
+    height: 70px;
+  }
+
+  .ring-1 {
+    width: 100px;
+    height: 100px;
+  }
+
+  .ring-2 {
+    width: 140px;
+    height: 140px;
+  }
+
+  .ring-3 {
+    width: 170px;
+    height: 170px;
+  }
+
+  .hud-transcript {
+    font-size: 0.9rem;
+    min-height: 40px;
+  }
+
+  .hud-controls {
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .hud-btn {
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .hud-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Landscape mode on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .app-container {
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .core-container {
+    width: 150px;
+    height: 150px;
+    margin-bottom: 10px;
+    margin-top: 10px;
+  }
+
+  .core-orb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .ring-1 {
+    width: 90px;
+    height: 90px;
+  }
+
+  .ring-2 {
+    width: 120px;
+    height: 120px;
+  }
+
+  .ring-3 {
+    width: 140px;
+    height: 140px;
+  }
+
+  .hud-transcript {
+    font-size: 0.85rem;
+    min-height: 30px;
+    margin-top: 5px;
+  }
+
+  .hud-controls {
+    bottom: 10px;
+    padding: 8px 16px;
+  }
+}
+
+/* Disable hover effects on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .hud-btn:hover {
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .hud-btn:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.95);
+  }
+}
+
+/* High DPI screens (Retina displays) */
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+  .core-orb {
+    box-shadow:
+      0 0 25px var(--primary-cyan),
+      0 0 50px var(--primary-cyan),
+      inset 0 0 18px rgba(255, 255, 255, 0.5);
+  }
 }
