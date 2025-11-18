@@ -51,7 +51,7 @@ class GmailService {
       // Use our auth redirect endpoint
       const redirectUri = process.env.NODE_ENV === 'production' 
         ? 'https://tisang-production.up.railway.app/api/gmail/auth-redirect'
-        : 'http://localhost:3001/api/gmail/auth-redirect';
+        : 'http://localhost:3000/api/gmail/auth-redirect';
       
       this.auth = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 

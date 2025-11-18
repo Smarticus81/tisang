@@ -19,11 +19,13 @@ To enable Gmail features in Ti-Sang, you need to set up Google API credentials:
    - User Type: External (for personal use)
    - App name: "Ti-Sang Voice Assistant"
    - User support email: your email
-   - Authorized domains: (leave empty for testing)
-   - Scopes: Add Gmail API scopes
+   - Scopes: Add Gmail API and Calendar API scopes
 4. Create OAuth 2.0 Client ID:
-   - Application type: "Desktop application"
-   - Name: "Ti-Sang Gmail Client"
+   - Application type: "Web application"
+   - Name: "Ti-Sang Web Client"
+   - Authorized redirect URIs: 
+     - `http://localhost:3000/api/gmail/auth-redirect`
+     - `https://tisang-production.up.railway.app/api/gmail/auth-redirect` (if deploying)
 5. Download the JSON file
 
 ## Step 3: Setup Credentials
@@ -33,10 +35,10 @@ To enable Gmail features in Ti-Sang, you need to set up Google API credentials:
 3. The file should look like this:
    ```json
    {
-     "installed": {
+     "web": {
        "client_id": "your-client-id",
        "client_secret": "your-client-secret",
-       "redirect_uris": ["http://localhost"]
+       "redirect_uris": ["http://localhost:3000/api/gmail/auth-redirect", "..."]
      }
    }
    ```
