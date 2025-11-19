@@ -73,8 +73,6 @@ const wakeThreshold = 0.6;
 const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
 const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
-
-
 const ReactiveCore: React.FC<{
   state: 'idle' | 'listening' | 'thinking' | 'speaking';
   volume?: number;
@@ -99,1321 +97,246 @@ const WebRTCApp: React.FC = () => {
   const [error, setError] = useState('');
   const [mouthScale, setMouthScale] = useState(1);
 
-  const [wakeWordEnabled, setWakeWordEnabled] = useState(false); // Changed to false by default
-  const [pendingWakeStart, setPendingWakeStart] = useState(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
 
   // Refs
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const mouthScaleRef = useRef(1);
-
-  const rafRef = useRef<number | null>(null);
-  const blinkIntervalRef = useRef<number | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const audioQueueRef = useRef<Float32Array[]>([]);
+  const isPlayingRef = useRef(false);
+  const nextPlayTimeRef = useRef(0);
+
   const recognizerRef = useRef<SpeechRecognition | null>(null);
-  const wakeRestartTimeoutRef = useRef<number | null>(null);
-  const wakeStartingRef = useRef<boolean>(false);
   const wakeRunningRef = useRef<boolean>(false);
-  const wakeShouldRunRef = useRef<boolean>(false);
-  const lastWakeTimeRef = useRef<number>(0);
-  const tokenRef = useRef<{ value: string; expiresAt?: number } | null>(null);
   const shouldGreetOnConnectRef = useRef<boolean>(false);
 
-
-  // Wake word detection
-  const detectWakeWord = useCallback((text: string) => {
-    const cleaned = sanitize(text);
-    let best = 0;
-
-    // Check against all wake words
-    for (const wakeWord of WAKE_WORDS) {
-      const cleanWake = sanitize(wakeWord);
-      let currentBest = similarity(cleaned, cleanWake);
-
-      // Also check substrings
-      const len = cleanWake.length;
-      for (let w = Math.max(3, len - 2); w <= len + 3; w++) {
-        for (let i = 0; i + w <= cleaned.length; i++) {
-          const chunk = cleaned.slice(i, i + w);
-          currentBest = Math.max(currentBest, similarity(chunk, cleanWake));
-        }
-      }
-
-      // Check if wake word appears as substring with word boundaries
-      if (cleaned.includes(cleanWake.replace(/\s/g, ''))) {
-        currentBest = Math.max(currentBest, 0.85);
-      }
-
-      best = Math.max(best, currentBest);
-    }
-
-    return best >= wakeThreshold;
+  // Initialize Audio Context
+  useEffect(() => {
+    audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    return () => {
+      audioContextRef.current?.close();
+    };
   }, []);
 
-  // Command detection for returning to wake word mode or shutting down
-  const detectVoiceCommands = useCallback((text: string) => {
-    const cleaned = sanitize(text);
-    console.log('🔍 Checking command in:', cleaned);
-
-    // Commands to return to wake word mode
-    const wakeCommands = [
-      'ok bye', 'okay bye', 'bye ti-sang', 'thanks ti-sang', 'thank you ti-sang',
-      'see you later', 'talk to you later', 'goodbye', 'bye bye', 'bye', 'thanks'
-    ];
-
-    // Commands to shut down completely
-    const shutdownCommands = [
-      'shut down', 'shutdown', 'stop listening', 'turn off', 'go to sleep', 'stop'
-    ];
-
-    for (const cmd of wakeCommands) {
-      const cmdClean = sanitize(cmd);
-      if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
-        console.log('✅ Wake mode command detected:', cmd);
-        return 'wake_mode';
-      }
-    }
-
-    for (const cmd of shutdownCommands) {
-      const cmdClean = sanitize(cmd);
-      if (cleaned.includes(cmdClean) || similarity(cleaned, cmdClean) > 0.6) {
-        console.log('✅ Shutdown command detected:', cmd);
-        return 'shutdown';
-      }
-    }
-
-    return null;
-  }, []);
-
-  // Fetch ephemeral token
-  const fetchEphemeralToken = useCallback(async (): Promise<string> => {
-    const now = Date.now() / 1000;
-    const cached = tokenRef.current;
-    if (cached && (!cached.expiresAt || cached.expiresAt - now > 15)) {
-      return cached.value;
-    }
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const base = isLocal ? 'http://localhost:3000' : '';
-    const response = await fetch(`${base}/api/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to fetch token');
-    }
-
-    const data = await response.json();
-    const value: string = data.token ?? data?.client_secret?.value;
-    const expiresAt: number | undefined = data.expires_at ?? data?.client_secret?.expires_at;
-    tokenRef.current = { value, expiresAt };
-    return value;
-  }, []);
-
-  // API handler functions
-  const handleGmailCheck = useCallback(async (maxResults: number = 5) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/emails?maxResults=${maxResults}`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to check Gmail' };
-      }
-
-      const data = await response.json();
-      return { emails: data.emails };
-    } catch {
-      return { error: 'Gmail check failed' };
-    }
-  }, []);
-
-  const handleGmailSearch = useCallback(async (query: string, maxResults: number = 5) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, maxResults })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Gmail search failed' };
-      }
-
-      const data = await response.json();
-      return { emails: data.emails };
-    } catch {
-      return { error: 'Gmail search failed' };
-    }
-  }, []);
-
-  const handleWebSearch = useCallback(async (query: string, maxResults: number = 5) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, maxResults })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Web search failed' };
-      }
-
-      const data = await response.json();
-      return { results: data.results };
-    } catch {
-      return { error: 'Web search failed' };
-    }
-  }, []);
-
-  const handleNewsSearch = useCallback(async (topic: string, maxResults: number = 3) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/search/news`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, maxResults })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'News search failed' };
-      }
-
-      const data = await response.json();
-      return { results: data.results };
-    } catch {
-      return { error: 'News search failed' };
-    }
-  }, []);
-
-  const handleGmailSetup = useCallback(async () => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/auth-url`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        return {
-          error: error.error || 'Gmail setup failed',
-          message: 'Gmail credentials not found. Please check the setup guide.'
-        };
-      }
-
-      const data = await response.json();
-
-      // Detect if running as standalone PWA
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
-
-      if (isStandalone) {
-        // In standalone mode, store return URL and redirect the whole page
-        sessionStorage.setItem('oauth-return-url', window.location.href);
-        sessionStorage.setItem('oauth-in-progress', 'true');
-        window.location.href = data.authUrl;
-
-        return {
-          success: true,
-          message: 'Redirecting to Gmail authentication...'
-        };
-      } else {
-        // In browser mode, use popup window
-        window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
-
-        return {
-          success: true,
-          message: 'Gmail authentication window opened. Please complete the OAuth flow.'
-        };
-      }
-    } catch {
-      return {
-        error: 'Gmail setup failed',
-        message: 'Unable to start Gmail authentication. Please try again.'
-      };
-    }
-  }, []);
-
-  const handleSendEmail = useCallback(async (args: { to: string; subject: string; text: string; cc?: string; bcc?: string; }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to send email' };
-      }
-      const data = await response.json();
-      return { success: true, id: data.result?.id };
-    } catch {
-      return { error: 'Failed to send email' };
-    }
-  }, []);
-
-  const handleCreateCalendarEvent = useCallback(async (args: { summary: string; description?: string; start: { date?: string; dateTime?: string }; end: { date?: string; dateTime?: string }; timezone?: string; }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/calendar/events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to create calendar event' };
-      }
-      const data = await response.json();
-      return { success: true, id: data.result?.id, link: data.result?.htmlLink };
-    } catch {
-      return { error: 'Failed to create calendar event' };
-    }
-  }, []);
-
-  const handleGetEmailDetails = useCallback(async (args: { emailId: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/email/${args.emailId}`);
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get email details' };
-      }
-      const data = await response.json();
-      return { success: true, email: data.email };
-    } catch {
-      return { error: 'Failed to get email details' };
-    }
-  }, []);
-
-  const handleDeleteEmail = useCallback(async (args: { emailId: string; permanent?: boolean }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/email/${args.emailId}?permanent=${args.permanent || false}`, {
-        method: 'DELETE'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to delete email' };
-      }
-      const data = await response.json();
-      return { success: true, result: data.result };
-    } catch {
-      return { error: 'Failed to delete email' };
-    }
-  }, []);
-
-  const handleReplyToEmail = useCallback(async (args: { emailId: string; text: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/reply/${args.emailId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: args.text })
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to reply to email' };
-      }
-      const data = await response.json();
-      return { success: true, result: data.result };
-    } catch {
-      return { error: 'Failed to reply to email' };
-    }
-  }, []);
-
-  const handleSummarizeEmails = useCallback(async (args: { maxResults?: number }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/summarize`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxResults: args.maxResults || 10 })
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to summarize emails' };
-      }
-      const data = await response.json();
-      return { success: true, summary: data.summary, emails: data.emails };
-    } catch {
-      return { error: 'Failed to summarize emails' };
-    }
-  }, []);
-
-  const handleListCalendarEvents = useCallback(async (args: { maxResults?: number; timeMin?: string; timeMax?: string; query?: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const params = new URLSearchParams();
-      if (args.maxResults) params.set('maxResults', args.maxResults.toString());
-      if (args.timeMin) params.set('timeMin', args.timeMin);
-      if (args.timeMax) params.set('timeMax', args.timeMax);
-      if (args.query) params.set('query', args.query);
-
-      const response = await fetch(`${base}/api/calendar/events?${params.toString()}`);
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to list calendar events' };
-      }
-      const data = await response.json();
-      return { success: true, events: data.events };
-    } catch {
-      return { error: 'Failed to list calendar events' };
-    }
-  }, []);
-
-  const handleAddActionItem = useCallback(async (args: { actionItem: string; dueDate: string; priority?: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/calendar/action-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to add action item' };
-      }
-      const data = await response.json();
-      return { success: true, result: data.result };
-    } catch {
-      return { error: 'Failed to add action item' };
-    }
-  }, []);
-
-  // New utility tool handlers
-  const handleGetWeather = useCallback(async (args: { location: string; units?: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/weather`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get weather' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to get weather' };
-    }
-  }, []);
-
-  const handleCalculate = useCallback(async (args: { expression: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/calculate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to calculate' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to calculate' };
-    }
-  }, []);
-
-  const handleConvertUnits = useCallback(async (args: { value: number; from: string; to: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/convert`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to convert units' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to convert units' };
-    }
-  }, []);
-
-  const handleTranslateText = useCallback(async (args: { text: string; targetLanguage: string; sourceLanguage?: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/translate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to translate' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to translate' };
-    }
-  }, []);
-
-  const handleGetDefinition = useCallback(async (args: { word: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/definition`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get definition' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to get definition' };
-    }
-  }, []);
-
-  const handleWikipediaSearch = useCallback(async (args: { query: string; sentences?: number }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/wikipedia`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to search Wikipedia' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to search Wikipedia' };
-    }
-  }, []);
-
-  const handleGetStockPrice = useCallback(async (args: { symbol: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/stock`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get stock price' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to get stock price' };
-    }
-  }, []);
-
-  const handleGetCryptoPrice = useCallback(async (args: { symbol: string; currency?: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/crypto`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get crypto price' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to get crypto price' };
-    }
-  }, []);
-
-  const handleGetTime = useCallback(async (args: { timezone: string }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/time`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to get time' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to get time' };
-    }
-  }, []);
-
-  const handleSearchImages = useCallback(async (args: { query: string; maxResults?: number }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/search/images`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to search images' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to search images' };
-    }
-  }, []);
-
-  const handleSearchVideos = useCallback(async (args: { query: string; maxResults?: number }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/search/videos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to search videos' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to search videos' };
-    }
-  }, []);
-
-  const handleAdvancedWebSearch = useCallback(async (args: { query: string; timeRange?: string; site?: string; maxResults?: number }) => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/search/advanced`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(args)
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        return { error: error.error || 'Failed to search' };
-      }
-      return await response.json();
-    } catch {
-      return { error: 'Failed to search' };
-    }
-  }, []);
-
-  // Check Gmail status
+  // Check Gmail Status
   const checkGmailStatus = useCallback(async () => {
     try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/status`);
-
+      const response = await fetch('/api/status');
       if (response.ok) {
         const data = await response.json();
         setGmailStatus(data.gmail ? 'available' : 'unavailable');
-      } else {
-        setGmailStatus('unavailable');
       }
     } catch {
-      setGmailStatus('unavailable');
+      setGmailStatus('unknown');
     }
   }, []);
 
-  // Manual Gmail setup trigger
-  const triggerGmailSetup = useCallback(async () => {
-    try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const base = isLocal ? 'http://localhost:3000' : '';
-      const response = await fetch(`${base}/api/gmail/auth-url`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        if (error.setup_url) {
-          // Open setup guide
-          window.open(`${base}/gmail-setup`, 'gmail-setup', 'width=900,height=700,scrollbars=yes,resizable=yes');
-        } else {
-          alert('Gmail setup failed: ' + (error.error || 'Unknown error'));
-        }
-        return;
-      }
-
-      const data = await response.json();
-
-      // Detect if running as standalone PWA
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
-
-      if (isStandalone) {
-        // In standalone mode, redirect the whole page
-        sessionStorage.setItem('oauth-return-url', window.location.href);
-        sessionStorage.setItem('oauth-in-progress', 'true');
-        window.location.href = data.authUrl;
-      } else {
-        // In browser mode, use popup window
-        const authWindow = window.open(data.authUrl, 'gmail-auth', 'width=600,height=600,scrollbars=yes,resizable=yes');
-
-        // Check if window was closed and refresh status
-        const checkClosed = setInterval(() => {
-          if (authWindow?.closed) {
-            clearInterval(checkClosed);
-            setTimeout(() => {
-              checkGmailStatus();
-            }, 1000);
-          }
-        }, 1000);
-      }
-
-    } catch (error) {
-      console.error('Gmail setup error:', error);
-      alert('Failed to start Gmail setup. Please try again.');
-    }
+  useEffect(() => {
+    checkGmailStatus();
   }, [checkGmailStatus]);
 
-  // Wake word recognition
-  const startWakeRecognition = useCallback(() => {
-    try {
-      const SpeechRec: SRConstructor | undefined = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRec) {
-        console.warn('SpeechRecognition not supported in this browser.');
-        return;
+  const triggerGmailSetup = () => {
+    const width = 500;
+    const height = 600;
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+
+    window.open(
+      '/api/gmail/auth-url',
+      'GmailAuth',
+      `width=${width},height=${height},top=${top},left=${left}`
+    );
+
+    const checkInterval = setInterval(async () => {
+      await checkGmailStatus();
+      if (gmailStatus === 'available') {
+        clearInterval(checkInterval);
       }
+    }, 2000);
 
-      // Prevent multiple instances
-      if (wakeStartingRef.current || wakeRunningRef.current || recognizerRef.current) {
-        console.log('Wake recognition already running or starting');
-        return;
-      }
+    setTimeout(() => clearInterval(checkInterval), 60000);
+  };
 
-      const recognition = new SpeechRec();
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      wakeShouldRunRef.current = true;
-
-      // Clear any existing timeouts
-      if (wakeRestartTimeoutRef.current) {
-        window.clearTimeout(wakeRestartTimeoutRef.current);
-        wakeRestartTimeoutRef.current = null;
-      }
-
-      recognition.onstart = () => {
-        console.log('✅ Wake word recognition started');
-        wakeStartingRef.current = false;
-        wakeRunningRef.current = true;
-      };
-
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        if (!wakeShouldRunRef.current) return; // Ignore results if we're shutting down
-
-        const results = event.results;
-        const idx = event.resultIndex;
-        const transcript = results[idx][0].transcript;
-        const confidence = results[idx][0].confidence;
-
-        if (results[idx].isFinal || (confidence ?? 0) > 0.7) {
-          const now = Date.now();
-          const onCooldown = now - lastWakeTimeRef.current < 3000;
-          if (!onCooldown && detectWakeWord(transcript)) {
-            lastWakeTimeRef.current = now;
-            console.log('🎯 Wake word detected:', transcript);
-            shouldGreetOnConnectRef.current = true;
-            setPendingWakeStart(true);
-          }
-        }
-      };
-
-      recognition.onerror = (e: SpeechRecognitionErrorEvent) => {
-        console.warn('⚠️ SpeechRecognition error:', e.error, e.message);
-        wakeRunningRef.current = false;
-
-        // Only restart for recoverable errors and if we should still be running
-        const recoverable = e.error === 'no-speech' || e.error === 'network';
-        const shouldRestart = recoverable && wakeShouldRunRef.current && !listening && wakeWordEnabled;
-
-        if (e.error === 'aborted') {
-          // Don't restart on aborted - this usually means we're stopping intentionally
-          console.log('🛑 Speech recognition aborted - not restarting');
-          return;
-        }
-
-        if (shouldRestart) {
-          // Longer delay to prevent rapid restart cycles
-          if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
-          wakeRestartTimeoutRef.current = window.setTimeout(() => {
-            if (wakeShouldRunRef.current && !listening && !recognizerRef.current) {
-              console.log('🔄 Restarting wake recognition after error');
-              startWakeRecognition();
-            }
-          }, 1500); // Increased delay to 1.5 seconds
-        }
-      };
-
-      recognition.onend = () => {
-        console.log('🔚 Wake recognition ended');
-        wakeRunningRef.current = false;
-
-        // Only restart if we should still be running
-        if (wakeWordEnabled && wakeShouldRunRef.current && !listening) {
-          if (wakeRestartTimeoutRef.current) window.clearTimeout(wakeRestartTimeoutRef.current);
-          wakeRestartTimeoutRef.current = window.setTimeout(() => {
-            if (wakeShouldRunRef.current && !listening && !recognizerRef.current) {
-              console.log('🔄 Restarting wake recognition after end');
-              startWakeRecognition();
-            }
-          }, 1000); // 1 second delay for normal restart
-        }
-      };
-
-      recognizerRef.current = recognition;
-
-      try {
-        wakeStartingRef.current = true;
-        recognition.start();
-      } catch (error) {
-        console.error('❌ Failed to start recognition:', error);
-        wakeStartingRef.current = false;
-        recognizerRef.current = null;
-      }
-
-    } catch (e) {
-      console.warn('❌ Failed to start wake recognition:', e);
-      wakeStartingRef.current = false;
-    }
-  }, [wakeWordEnabled, listening, detectWakeWord]);
-
-  const stopWakeRecognition = useCallback(() => {
-    console.log('🛑 Stopping wake recognition');
-    const rec = recognizerRef.current;
-
-    // Stop should run flag first to prevent restarts
-    wakeShouldRunRef.current = false;
-
-    // Clear any pending restart timeouts
-    if (wakeRestartTimeoutRef.current) {
-      window.clearTimeout(wakeRestartTimeoutRef.current);
-      wakeRestartTimeoutRef.current = null;
+  // Audio Playback Logic
+  const playNextAudioChunk = useCallback(() => {
+    if (audioQueueRef.current.length === 0 || !audioContextRef.current) {
+      isPlayingRef.current = false;
+      setSpeaking(false);
+      return;
     }
 
-    if (rec) {
-      try {
-        // Clear event handlers to prevent callbacks during shutdown
-        rec.onresult = null;
-        rec.onend = null;
-        rec.onerror = null;
-        rec.onstart = null;
+    isPlayingRef.current = true;
+    setSpeaking(true);
+    const audioData = audioQueueRef.current.shift()!;
+    const buffer = audioContextRef.current.createBuffer(1, audioData.length, 24000);
+    buffer.getChannelData(0).set(audioData);
 
-        // Stop the recognition
-        rec.stop();
-      } catch (error) {
-        console.warn('⚠️ Error stopping recognition:', error);
+    const source = audioContextRef.current.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContextRef.current.destination);
+
+    const currentTime = audioContextRef.current.currentTime;
+    const startTime = Math.max(currentTime, nextPlayTimeRef.current);
+    source.start(startTime);
+    nextPlayTimeRef.current = startTime + buffer.duration;
+
+    source.onended = () => {
+      if (audioQueueRef.current.length === 0) {
+        isPlayingRef.current = false;
+        setSpeaking(false);
       }
+    };
 
-      recognizerRef.current = null;
+    // Schedule next chunk
+    if (audioQueueRef.current.length > 0) {
+      setTimeout(playNextAudioChunk, (buffer.duration * 1000) / 2);
     }
-
-    // Reset state flags
-    wakeRunningRef.current = false;
-    wakeStartingRef.current = false;
-
-    console.log('✅ Wake word recognition stopped');
   }, []);
 
-  // WebRTC connection using OpenAI documentation method
-  const handleStartListening = useCallback(async () => {
-    if (connected || loading) return;
+  const handleAudioMessage = useCallback((base64Audio: string) => {
+    try {
+      const binaryString = window.atob(base64Audio);
+      const len = binaryString.length;
+      const bytes = new Float32Array(len / 2);
+      const view = new DataView(new ArrayBuffer(len));
 
+      for (let i = 0; i < len; i++) {
+        view.setUint8(i, binaryString.charCodeAt(i));
+      }
+
+      for (let i = 0; i < len / 2; i++) {
+        bytes[i] = view.getInt16(i * 2, true) / 32768.0;
+      }
+
+      audioQueueRef.current.push(bytes);
+      if (!isPlayingRef.current) {
+        playNextAudioChunk();
+      }
+
+      // Visualize volume
+      let sum = 0;
+      for (let i = 0; i < bytes.length; i++) sum += Math.abs(bytes[i]);
+      const avg = sum / bytes.length;
+      setMouthScale(1 + avg * 5);
+
+    } catch (e) {
+      console.error('Error processing audio message:', e);
+    }
+  }, [playNextAudioChunk]);
+
+  const startAudioCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+      mediaStreamRef.current = stream;
+
+      if (!audioContextRef.current) return;
+
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+
+      processor.onaudioprocess = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+
+        const buffer = new ArrayBuffer(pcm16.length * 2);
+        new Int16Array(buffer).set(pcm16);
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+        const base64 = window.btoa(binary);
+
+        wsRef.current.send(JSON.stringify({ type: 'audio', data: base64 }));
+      };
+
+      source.connect(processor);
+      processor.connect(audioContextRef.current.destination);
+      processorRef.current = processor;
+
+    } catch (e) {
+      console.error('Microphone access denied:', e);
+      setError('Microphone access denied');
+    }
+  };
+
+  const stopAudioCapture = () => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+  };
+
+  // Connect to Gemini
+  const connectToGemini = useCallback(async () => {
+    if (connected || loading) return;
     setLoading(true);
     setError('');
 
     try {
-      // Get ephemeral token from backend
-      const token = await fetchEphemeralToken();
-      console.log('✅ Got ephemeral token');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const ws = new WebSocket(`${protocol}//${host}/api/gemini/stream`);
 
-      // Create WebRTC peer connection
-      const pc = new RTCPeerConnection();
-
-      // Set up audio element for model output
-      const audioElement = document.createElement("audio");
-      audioElement.autoplay = true;
-      pc.ontrack = (e) => {
-        audioElement.srcObject = e.streams[0];
-        console.log('🎵 Connected to OpenAI audio stream');
-
-        // Set up audio analysis for lip-sync
-        try {
-          const AudioCtor =
-            window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          const audioContext = audioContextRef.current || (AudioCtor ? new AudioCtor() : undefined);
-          if (!audioContext) {
-            console.error('No AudioContext support in this browser');
-            return;
-          }
-          if (!audioContextRef.current) audioContextRef.current = audioContext;
-
-          const source = audioContext.createMediaElementSource(audioElement);
-          const analyser = audioContext.createAnalyser();
-          analyser.fftSize = 128;
-          analyser.smoothingTimeConstant = 0.6;
-
-          source.connect(analyser);
-          source.connect(audioContext.destination);
-          analyserRef.current = analyser;
-
-          const analyzeAudio = () => {
-            if (!analyserRef.current) return;
-
-            const dataArray = new Uint8Array(analyserRef.current.fftSize);
-            analyserRef.current.getByteTimeDomainData(dataArray);
-
-            let sum = 0;
-            for (let i = 0; i < dataArray.length; i++) {
-              const centered = (dataArray[i] - 128) / 128;
-              sum += centered * centered;
-            }
-            const rms = Math.sqrt(sum / dataArray.length);
-
-            const targetScale = 1.0 + Math.min(1.4, rms * 8);
-            mouthScaleRef.current = mouthScaleRef.current * 0.7 + targetScale * 0.3;
-
-            if (rafRef.current == null) {
-              rafRef.current = requestAnimationFrame(() => {
-                setMouthScale(mouthScaleRef.current);
-                rafRef.current = null;
-              });
-            }
-
-            animationFrameRef.current = requestAnimationFrame(analyzeAudio);
-          };
-
-          analyzeAudio();
-          console.log('✅ Audio analysis started');
-        } catch (e) {
-          console.warn('❌ Failed to set up audio analysis:', e);
-        }
-      };
-
-      // Add local microphone audio
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      pc.addTrack(mediaStream.getTracks()[0]);
-
-      // Set up data channel for events
-      const dataChannel = pc.createDataChannel("oai-events");
-
-      dataChannel.onopen = () => {
-        console.log('🔗 Data channel opened');
+      ws.onopen = () => {
+        console.log('Connected to Gemini Backend');
         setConnected(true);
+        setLoading(false);
         setListening(true);
+        wsRef.current = ws;
+        startAudioCapture();
 
-        // Send session configuration
-        const sessionUpdateEvent = {
+        // Send session update with tools
+        const sessionUpdate = {
           type: "session.update",
           session: {
-            instructions: [
-              'You are Ti-Sang, a professional and efficient voice assistant focused on task completion.',
-              '',
-              'USER: Terence - Only use the name when directly addressing or when specifically needed for clarity.',
-              '',
-              'COMMUNICATION STYLE:',
-              '- Professional and concise',
-              '- Task-focused and efficient',
-              '- Clear and direct responses',
-              '- Avoid overusing the user\'s name',
-              '- Minimal pleasantries unless specifically requested',
-              '- Confirm actions taken, report results briefly',
-              '',
-              'VOICE COMMANDS:',
-              '- "ok bye", "thanks", "goodbye" → Return to wake word mode',
-              '- "shut down", "stop listening" → Stop all listening',
-              '',
-              'CORE RESPONSIBILITIES:',
-              '1. Execute tasks efficiently',
-              '2. Provide accurate information',
-              '3. Manage email and calendar effectively',
-              '4. Search and retrieve information quickly',
-              '5. Minimize conversation, maximize action',
-              '',
-              'When handling tasks:',
-              '- Confirm understanding briefly',
-              '- Execute immediately',
-              '- Report completion status',
-              '- Ask for clarification only when necessary'
-            ].join('\n'),
             tools: [
               {
                 type: "function",
-                name: "check_gmail",
-                description: "Check recent Gmail emails",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    maxResults: {
-                      type: "number",
-                      description: "Maximum number of emails to retrieve (default: 5)"
-                    }
-                  }
-                }
-              },
-              {
-                type: "function",
-                name: "search_gmail",
-                description: "Search Gmail for specific emails",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: {
-                      type: "string",
-                      description: "Gmail search query (e.g., 'from:friend@email.com', 'subject:important')"
-                    },
-                    maxResults: {
-                      type: "number",
-                      description: "Maximum number of results (default: 5)"
-                    }
-                  },
-                  required: ["query"]
-                }
-              },
-              {
-                type: "function",
-                name: "web_search",
-                description: "Search the internet for information",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: {
-                      type: "string",
-                      description: "Search query"
-                    },
-                    maxResults: {
-                      type: "number",
-                      description: "Maximum number of results (default: 5)"
-                    }
-                  },
-                  required: ["query"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_news",
-                description: "Get recent news about a topic",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    topic: {
-                      type: "string",
-                      description: "News topic to search for"
-                    },
-                    maxResults: {
-                      type: "number",
-                      description: "Maximum number of news items (default: 3)"
-                    }
-                  },
-                  required: ["topic"]
-                }
-              },
-              {
-                type: "function",
-                name: "setup_gmail",
-                description: "Set up Gmail authentication for the user",
-                parameters: {
-                  type: "object",
-                  properties: {},
-                  required: []
-                }
-              },
-              {
-                type: "function",
-                name: "send_email",
-                description: "Send an email via Gmail",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    to: { type: "string", description: "Recipient email address" },
-                    subject: { type: "string", description: "Email subject" },
-                    text: { type: "string", description: "Plain text body" },
-                    cc: { type: "string", description: "CC recipients (optional)" },
-                    bcc: { type: "string", description: "BCC recipients (optional)" }
-                  },
-                  required: ["to", "subject", "text"]
-                }
+                name: "gmail_setup",
+                description: "Initiates the Gmail authentication process when the user asks to connect or set up Gmail.",
+                parameters: { type: "object", properties: {} }
               },
               {
                 type: "function",
                 name: "create_calendar_event",
-                description: "Create a Google Calendar event",
+                description: "Creates a new event in the user's Google Calendar.",
                 parameters: {
                   type: "object",
                   properties: {
-                    summary: { type: "string", description: "Event title" },
-                    description: { type: "string", description: "Event description" },
-                    start: {
-                      type: "object",
-                      description: "Start time/date. Provide either date (YYYY-MM-DD) or dateTime (ISO).",
-                      properties: {
-                        date: { type: "string" },
-                        dateTime: { type: "string" }
-                      }
-                    },
-                    end: {
-                      type: "object",
-                      description: "End time/date. Provide either date (YYYY-MM-DD) or dateTime (ISO).",
-                      properties: {
-                        date: { type: "string" },
-                        dateTime: { type: "string" }
-                      }
-                    },
-                    timezone: { type: "string", description: "IANA timezone, e.g., America/New_York" }
+                    summary: { type: "string", description: "Title of the event" },
+                    description: { type: "string", description: "Description or details of the event" },
+                    start: { type: "string", description: "Start time in ISO 8601 format (e.g., 2023-10-27T10:00:00-05:00)" },
+                    end: { type: "string", description: "End time in ISO 8601 format" },
+                    location: { type: "string", description: "Location of the event" },
+                    attendees: { type: "array", items: { type: "string" }, description: "List of email addresses to invite" }
                   },
                   required: ["summary", "start", "end"]
                 }
               },
               {
                 type: "function",
-                name: "get_email_details",
-                description: "Get full details of a specific email by ID",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    emailId: { type: "string", description: "The email ID to retrieve" }
-                  },
-                  required: ["emailId"]
-                }
-              },
-              {
-                type: "function",
-                name: "delete_email",
-                description: "Delete an email (moves to trash by default, or permanently deletes)",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    emailId: { type: "string", description: "The email ID to delete" },
-                    permanent: { type: "boolean", description: "If true, permanently delete; otherwise move to trash (default: false)" }
-                  },
-                  required: ["emailId"]
-                }
-              },
-              {
-                type: "function",
-                name: "reply_to_email",
-                description: "Reply to an email",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    emailId: { type: "string", description: "The email ID to reply to" },
-                    text: { type: "string", description: "Plain text reply message" }
-                  },
-                  required: ["emailId", "text"]
-                }
-              },
-              {
-                type: "function",
-                name: "summarize_emails",
-                description: "Get a summary of recent emails including total count, senders, and important metrics",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    maxResults: { type: "number", description: "Maximum number of emails to analyze (default: 10)" }
-                  }
-                }
-              },
-              {
-                type: "function",
                 name: "list_calendar_events",
-                description: "List upcoming calendar events",
+                description: "Lists upcoming events from the user's calendar.",
                 parameters: {
                   type: "object",
                   properties: {
-                    maxResults: { type: "number", description: "Maximum number of events to retrieve (default: 10)" },
-                    timeMin: { type: "string", description: "Start time in ISO format (default: now)" },
-                    timeMax: { type: "string", description: "End time in ISO format (optional)" },
-                    query: { type: "string", description: "Search query to filter events (optional)" }
+                    maxResults: { type: "number", description: "Maximum number of events to return (default 10)" },
+                    timeMin: { type: "string", description: "Start time to list events from (ISO 8601)" },
+                    timeMax: { type: "string", description: "End time to list events to (ISO 8601)" },
+                    query: { type: "string", description: "Free text search terms to filter events" }
                   }
-                }
-              },
-              {
-                type: "function",
-                name: "add_action_item",
-                description: "Add an action item to the calendar with reminders",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    actionItem: { type: "string", description: "Description of the action item" },
-                    dueDate: { type: "string", description: "Due date/time in ISO format" },
-                    priority: { type: "string", description: "Priority level: low, medium, or high (default: medium)" }
-                  },
-                  required: ["actionItem", "dueDate"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_weather",
-                description: "Get current weather and forecast for a location",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    location: { type: "string", description: "City name or zip code" },
-                    units: { type: "string", description: "Temperature units: celsius, fahrenheit (default: fahrenheit)" }
-                  },
-                  required: ["location"]
-                }
-              },
-              {
-                type: "function",
-                name: "calculate",
-                description: "Perform mathematical calculations and evaluate expressions",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    expression: { type: "string", description: "Mathematical expression to evaluate (e.g., '2 + 2', 'sqrt(16)', 'sin(45)')" }
-                  },
-                  required: ["expression"]
-                }
-              },
-              {
-                type: "function",
-                name: "convert_units",
-                description: "Convert between different units of measurement",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    value: { type: "number", description: "The value to convert" },
-                    from: { type: "string", description: "Source unit (e.g., 'miles', 'kg', 'celsius')" },
-                    to: { type: "string", description: "Target unit (e.g., 'km', 'lbs', 'fahrenheit')" }
-                  },
-                  required: ["value", "from", "to"]
-                }
-              },
-              {
-                type: "function",
-                name: "translate_text",
-                description: "Translate text between languages",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    text: { type: "string", description: "Text to translate" },
-                    targetLanguage: { type: "string", description: "Target language code (e.g., 'es', 'fr', 'de', 'ja')" },
-                    sourceLanguage: { type: "string", description: "Source language code (optional, auto-detect if not provided)" }
-                  },
-                  required: ["text", "targetLanguage"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_definition",
-                description: "Get dictionary definition and information about a word",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    word: { type: "string", description: "Word to define" }
-                  },
-                  required: ["word"]
-                }
-              },
-              {
-                type: "function",
-                name: "wikipedia_search",
-                description: "Search Wikipedia and get article summaries",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: { type: "string", description: "Search query" },
-                    sentences: { type: "number", description: "Number of sentences in summary (default: 3)" }
-                  },
-                  required: ["query"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_stock_price",
-                description: "Get current stock price and market data",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    symbol: { type: "string", description: "Stock ticker symbol (e.g., 'AAPL', 'GOOGL')" }
-                  },
-                  required: ["symbol"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_crypto_price",
-                description: "Get cryptocurrency prices and market data",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    symbol: { type: "string", description: "Crypto symbol (e.g., 'BTC', 'ETH', 'SOL')" },
-                    currency: { type: "string", description: "Target currency (default: 'USD')" }
-                  },
-                  required: ["symbol"]
-                }
-              },
-              {
-                type: "function",
-                name: "get_time",
-                description: "Get current time in a specific timezone or location",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    timezone: { type: "string", description: "IANA timezone (e.g., 'America/New_York') or city name" }
-                  },
-                  required: ["timezone"]
-                }
-              },
-              {
-                type: "function",
-                name: "search_images",
-                description: "Search for images on the web",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: { type: "string", description: "Image search query" },
-                    maxResults: { type: "number", description: "Maximum number of results (default: 5)" }
-                  },
-                  required: ["query"]
-                }
-              },
-              {
-                type: "function",
-                name: "search_videos",
-                description: "Search for videos on the web",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    query: { type: "string", description: "Video search query" },
-                    maxResults: { type: "number", description: "Maximum number of results (default: 5)" }
-                  },
-                  required: ["query"]
                 }
               },
               {
@@ -1434,343 +357,152 @@ const WebRTCApp: React.FC = () => {
             ]
           }
         };
-        dataChannel.send(JSON.stringify(sessionUpdateEvent));
+        ws.send(JSON.stringify(sessionUpdate));
 
-        // Send greeting if triggered by wake word
         if (shouldGreetOnConnectRef.current) {
           shouldGreetOnConnectRef.current = false;
-          setTimeout(() => {
-            const greetEvent = {
-              type: "conversation.item.create",
-              item: {
-                type: "message",
-                role: "user",
-                content: [{ type: "input_text", text: WAKE_GREETING }]
-              }
-            };
-            dataChannel.send(JSON.stringify(greetEvent));
-
-            const responseEvent = { type: "response.create" };
-            dataChannel.send(JSON.stringify(responseEvent));
-          }, 100);
+          // Send greeting trigger
+          ws.send(JSON.stringify({
+            type: "conversation.item.create",
+            item: {
+              type: "message",
+              role: "user",
+              content: [{ type: "input_text", text: WAKE_GREETING }]
+            }
+          }));
+          ws.send(JSON.stringify({ type: "response.create" }));
         }
       };
 
-      dataChannel.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📨 Received event:', data.type);
-
-          if (data.type === 'response.audio.start') {
-            setSpeaking(true);
-            setSpeaking(true);
-          } else if (data.type === 'response.audio.done') {
-            setSpeaking(false);
-            setSpeaking(false);
-            mouthScaleRef.current = 1;
-            // Removed viseme logic for new avatar
-          } else if (data.type === 'conversation.item.input_audio_transcription.completed') {
-            // Check user's speech for commands
-            const transcript = data.transcript || '';
-            if (transcript) {
-              console.log('🎤 User transcript:', transcript);
-              const command = detectVoiceCommands(transcript);
-              if (command === 'wake_mode') {
-                console.log('🔄 Returning to wake word mode');
-                setTimeout(() => {
-                  handleStopListening();
-                  setWakeWordEnabled(true);
-                }, 1000);
-              } else if (command === 'shutdown') {
-                console.log('🛑 Shutting down');
-                setTimeout(() => {
-                  handleStopListening();
-                  setWakeWordEnabled(false);
-                }, 1000);
-              }
-            }
-          } else if (data.type === 'input_audio_buffer.committed') {
-            // Also check when audio buffer is committed - this happens after speech
-            // This provides an additional detection point for commands
-            console.log('🎤 Audio buffer committed - checking for commands');
-          } else if (data.type === 'conversation.item.created' && data.item?.type === 'message' && data.item?.role === 'user') {
-            // Check user messages for commands
-            const content = data.item?.content?.[0]?.text || '';
-            if (content) {
-              console.log('💬 User message:', content);
-              const command = detectVoiceCommands(content);
-              if (command === 'wake_mode') {
-                console.log('🔄 Returning to wake word mode (from message)');
-                setTimeout(() => {
-                  handleStopListening();
-                  setWakeWordEnabled(true);
-                }, 1000);
-              } else if (command === 'shutdown') {
-                console.log('🛑 Shutting down (from message)');
-                setTimeout(() => {
-                  handleStopListening();
-                  setWakeWordEnabled(false);
-                }, 1000);
-              }
-            }
-          } else if (data.type === 'response.function_call_arguments.delta') {
-            // Handle function call arguments
-            console.log('📞 Function call delta:', data);
-          } else if (data.type === 'response.function_call_arguments.done') {
-            // Function call complete - execute the function
-            const { call_id, name, arguments: args } = data;
-            console.log('📞 Function call:', name, args);
-
-            (async () => {
-              try {
-                let result = null;
-                const parsedArgs = JSON.parse(args || '{}');
-
-                switch (name) {
-                  case 'check_gmail':
-                    result = await handleGmailCheck(parsedArgs.maxResults || 5);
-                    break;
-                  case 'search_gmail':
-                    result = await handleGmailSearch(parsedArgs.query, parsedArgs.maxResults || 5);
-                    break;
-                  case 'send_email':
-                    result = await handleSendEmail(parsedArgs);
-                    break;
-                  case 'create_calendar_event':
-                    result = await handleCreateCalendarEvent(parsedArgs);
-                    break;
-                  case 'get_email_details':
-                    result = await handleGetEmailDetails(parsedArgs);
-                    break;
-                  case 'delete_email':
-                    result = await handleDeleteEmail(parsedArgs);
-                    break;
-                  case 'reply_to_email':
-                    result = await handleReplyToEmail(parsedArgs);
-                    break;
-                  case 'summarize_emails':
-                    result = await handleSummarizeEmails(parsedArgs);
-                    break;
-                  case 'list_calendar_events':
-                    result = await handleListCalendarEvents(parsedArgs);
-                    break;
-                  case 'add_action_item':
-                    result = await handleAddActionItem(parsedArgs);
-                    break;
-                  case 'web_search':
-                    result = await handleWebSearch(parsedArgs.query, parsedArgs.maxResults || 5);
-                    break;
-                  case 'get_news':
-                    result = await handleNewsSearch(parsedArgs.topic, parsedArgs.maxResults || 3);
-                    break;
-                  case 'setup_gmail':
-                    result = await handleGmailSetup();
-                    break;
-                  case 'get_weather':
-                    result = await handleGetWeather(parsedArgs);
-                    break;
-                  case 'calculate':
-                    result = await handleCalculate(parsedArgs);
-                    break;
-                  case 'convert_units':
-                    result = await handleConvertUnits(parsedArgs);
-                    break;
-                  case 'translate_text':
-                    result = await handleTranslateText(parsedArgs);
-                    break;
-                  case 'get_definition':
-                    result = await handleGetDefinition(parsedArgs);
-                    break;
-                  case 'wikipedia_search':
-                    result = await handleWikipediaSearch(parsedArgs);
-                    break;
-                  case 'get_stock_price':
-                    result = await handleGetStockPrice(parsedArgs);
-                    break;
-                  case 'get_crypto_price':
-                    result = await handleGetCryptoPrice(parsedArgs);
-                    break;
-                  case 'get_time':
-                    result = await handleGetTime(parsedArgs);
-                    break;
-                  case 'search_images':
-                    result = await handleSearchImages(parsedArgs);
-                    break;
-                  case 'search_videos':
-                    result = await handleSearchVideos(parsedArgs);
-                    break;
-                  case 'advanced_web_search':
-                    result = await handleAdvancedWebSearch(parsedArgs);
-                    break;
-                  default:
-                    result = { error: `Unknown function: ${name}` };
-                }
-
-                // Send function result back
-                const responseEvent = {
-                  type: "conversation.item.create",
-                  item: {
-                    type: "function_call_output",
-                    call_id,
-                    output: JSON.stringify(result)
-                  }
-                };
-                dataChannel.send(JSON.stringify(responseEvent));
-
-                // Continue the response
-                const continueEvent = { type: "response.create" };
-                dataChannel.send(JSON.stringify(continueEvent));
-
-              } catch (error) {
-                console.error('Function call error:', error);
-                const errorEvent = {
-                  type: "conversation.item.create",
-                  item: {
-                    type: "function_call_output",
-                    call_id,
-                    output: JSON.stringify({ error: (error as Error).message || 'Unknown error' })
-                  }
-                };
-                dataChannel.send(JSON.stringify(errorEvent));
-              }
-            })();
+          if (data.type === 'audio') {
+            handleAudioMessage(data.data);
+          } else if (data.type === 'error') {
+            setError(data.message);
           }
         } catch (e) {
-          console.warn('Failed to parse event:', e);
+          console.error('WebSocket message error:', e);
         }
       };
 
-      // Create offer and set local description
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      // Send offer to OpenAI Realtime API using WebRTC
-      const baseUrl = "https://api.openai.com/v1/realtime/calls";
-      const model = "gpt-realtime";
-      const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
-        method: "POST",
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/sdp",
-          "OpenAI-Beta": "realtime=v1",
-        },
-      });
-
-      if (!sdpResponse.ok) {
-        const errorText = await sdpResponse.text();
-        throw new Error(`WebRTC connection failed: ${sdpResponse.status} ${sdpResponse.statusText} - ${errorText}`);
-      }
-
-      const answer = {
-        type: "answer" as RTCSdpType,
-        sdp: await sdpResponse.text(),
+      ws.onclose = () => {
+        console.log('Disconnected from Gemini Backend');
+        setConnected(false);
+        setListening(false);
+        setLoading(false);
+        stopAudioCapture();
+        wsRef.current = null;
       };
-      await pc.setRemoteDescription(answer);
 
-      // Store references
-      peerConnectionRef.current = pc;
-      dataChannelRef.current = dataChannel;
-      audioElementRef.current = audioElement;
+      ws.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        setError('Connection error');
+        setLoading(false);
+      };
 
-      // Stop wake recognition while actively engaged
-      stopWakeRecognition();
-
-      console.log('✅ WebRTC connection established with OpenAI Realtime API');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start listening');
-      console.error('WebRTC connection error:', err);
-    } finally {
+    } catch (e) {
+      console.error('Connection failed:', e);
+      setError('Failed to connect');
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, loading, fetchEphemeralToken, stopWakeRecognition, handleGmailCheck, handleGmailSearch, handleWebSearch, handleNewsSearch, handleGmailSetup, detectVoiceCommands]);  // Stop listening and disconnect
-  const handleStopListening = useCallback(() => {
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    if (dataChannelRef.current) {
-      dataChannelRef.current.close();
-      dataChannelRef.current = null;
-    }
-    if (audioElementRef.current && audioElementRef.current.srcObject) {
-      const stream = audioElementRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      audioElementRef.current = null;
-    }
+  }, [connected, loading, handleAudioMessage]);
 
-    setListening(false);
+  const disconnectFromGemini = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
+    }
+    stopAudioCapture();
     setConnected(false);
-    setSpeaking(false);
+    setListening(false);
+  }, []);
 
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+  // Wake Word Logic
+  const detectWakeWord = useCallback((transcript: string) => {
+    const lower = sanitize(transcript);
+    for (const word of WAKE_WORDS) {
+      if (lower.includes(word) || similarity(lower, word) > wakeThreshold) {
+        return true;
+      }
     }
-    if (blinkIntervalRef.current != null) {
-      clearInterval(blinkIntervalRef.current);
-      blinkIntervalRef.current = null;
-    }
-    if (animationFrameRef.current != null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close();
-      audioContextRef.current = null;
-    }
-    analyserRef.current = null;
-    setMouthScale(1);
+    return false;
+  }, []);
 
-    // Resume wake recognition if enabled
+  const startWakeRecognition = useCallback(() => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setError('Speech recognition not supported');
+      return;
+    }
+
+    if (wakeRunningRef.current || recognizerRef.current) return;
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const results = event.results;
+        const idx = event.resultIndex;
+        const transcript = results[idx][0].transcript;
+        const isFinal = results[idx].isFinal;
+
+        if (isFinal || results[idx][0].confidence > 0.7) {
+          if (detectWakeWord(transcript)) {
+            console.log('🎯 Wake word detected:', transcript);
+            stopWakeRecognition();
+            handleStartListening();
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        wakeRunningRef.current = false;
+        recognizerRef.current = null;
+        // Auto-restart if it wasn't stopped intentionally
+        if (wakeWordEnabled && !listening) {
+          setTimeout(() => startWakeRecognition(), 1000);
+        }
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.warn('Wake word error:', event.error);
+        wakeRunningRef.current = false;
+      };
+
+      recognition.start();
+      recognizerRef.current = recognition;
+      wakeRunningRef.current = true;
+      console.log('✅ Wake word recognition started');
+    } catch (e) {
+      console.error('Failed to start wake recognition:', e);
+    }
+  }, [wakeWordEnabled, listening, detectWakeWord]);
+
+  const stopWakeRecognition = useCallback(() => {
+    if (recognizerRef.current) {
+      recognizerRef.current.stop();
+      recognizerRef.current = null;
+    }
+    wakeRunningRef.current = false;
+    console.log('🛑 Wake word recognition stopped');
+  }, []);
+
+  const handleStartListening = () => {
+    shouldGreetOnConnectRef.current = true;
+    connectToGemini();
+  };
+
+  const handleStopListening = () => {
+    disconnectFromGemini();
     if (wakeWordEnabled) {
       startWakeRecognition();
     }
-  }, [wakeWordEnabled, startWakeRecognition]);
-
-  // Wake word recognition lifecycle
-  useEffect(() => {
-    if (wakeWordEnabled && !listening && !recognizerRef.current) {
-      startWakeRecognition();
-    }
-    if ((!wakeWordEnabled || listening) && recognizerRef.current) {
-      stopWakeRecognition();
-    }
-    return () => {
-      stopWakeRecognition();
-    };
-  }, [wakeWordEnabled, listening, startWakeRecognition, stopWakeRecognition]);
-
-  // Trigger start when wake word detected
-  useEffect(() => {
-    if (pendingWakeStart && !listening && !loading) {
-      setPendingWakeStart(false);
-      void handleStartListening();
-    }
-  }, [pendingWakeStart, listening, loading, handleStartListening]);
-
-  // Prefetch token on mount
-  useEffect(() => {
-    (async () => {
-      try {
-        // Check if returning from OAuth in standalone mode
-        const oauthInProgress = sessionStorage.getItem('oauth-in-progress');
-
-        if (oauthInProgress === 'true') {
-          // Clear OAuth flags
-          sessionStorage.removeItem('oauth-in-progress');
-          sessionStorage.removeItem('oauth-return-url');
-
-          // Wait a moment for backend to process the OAuth callback
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-
-        await fetchEphemeralToken();
-        await checkGmailStatus();
-      } catch { /* noop */ }
-    })();
-  }, [fetchEphemeralToken, checkGmailStatus]);
+  };
 
   // Determine Core State
   let coreState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
@@ -1785,7 +517,7 @@ const WebRTCApp: React.FC = () => {
 
       <div className="app-container">
         <div className="status-indicators">
-          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title="WebRTC Connection" />
+          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title="Gemini Connection" />
           <div className={`status-dot ${gmailStatus === 'available' ? 'connected' : 'error'}`} title="Gmail Connection" />
         </div>
 
@@ -1800,7 +532,7 @@ const WebRTCApp: React.FC = () => {
               ) : speaking ? (
                 <span className="agent-text">Speaking...</span>
               ) : loading ? (
-                <span className="agent-text">Connecting...</span>
+                <span className="agent-text">Connecting to Gemini...</span>
               ) : (
                 <span className="user-text">Say "Ti-Sang" or press Start</span>
               )}

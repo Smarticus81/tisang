@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import GmailService from './backend/gmail-service.js';
 import SearchService from './backend/search-service.js';
 import UtilityService from './backend/utility-service.js';
+import GeminiService from './backend/gemini-service.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 const gmailService = new GmailService();
 const searchService = new SearchService();
 const utilityService = new UtilityService();
+const geminiService = new GeminiService();
 
 // Initialize Gmail service
 let gmailAvailable = false;
@@ -40,7 +42,7 @@ app.get('/api/gmail/auth-url', async (req, res) => {
       // Try to reinitialize Gmail service
       const available = await gmailService.initialize();
       if (!available) {
-        return res.status(503).json({ 
+        return res.status(503).json({
           error: 'Gmail service not available. Please ensure gmail-credentials.json is in the backend folder.',
           setup_url: '/gmail-setup'
         });
@@ -138,7 +140,7 @@ app.post('/api/gmail/auth', async (req, res) => {
     if (!code) {
       return res.status(400).json({ error: 'Authorization code required' });
     }
-    
+
     await gmailService.setAuthCode(code);
     gmailAvailable = true;
     res.json({ success: true, message: 'Gmail authentication successful' });
@@ -152,7 +154,7 @@ app.get('/api/gmail/emails', async (req, res) => {
     if (!gmailAvailable) {
       return res.status(503).json({ error: 'Gmail not authenticated' });
     }
-    
+
     const maxResults = parseInt(req.query.maxResults) || 10;
     const emails = await gmailService.getRecentEmails(maxResults);
     res.json({ emails });
@@ -166,12 +168,12 @@ app.post('/api/gmail/search', async (req, res) => {
     if (!gmailAvailable) {
       return res.status(503).json({ error: 'Gmail not authenticated' });
     }
-    
+
     const { query, maxResults = 5 } = req.body;
     if (!query) {
       return res.status(400).json({ error: 'Search query required' });
     }
-    
+
     const emails = await gmailService.searchEmails(query, maxResults);
     res.json({ emails });
   } catch (error) {
@@ -286,7 +288,7 @@ app.post('/api/search', async (req, res) => {
     if (!query) {
       return res.status(400).json({ error: 'Search query required' });
     }
-    
+
     const results = await searchService.search(query, maxResults);
     res.json({ results });
   } catch (error) {
@@ -570,58 +572,9 @@ app.get('/api/status', (req, res) => {
 });
 
 // API route for token generation
-app.post('/api/token', async (req, res) => {
-  try {
-    const openaiApiKey = process.env.OPENAI_API_KEY;
-    if (!openaiApiKey) {
-      return res.status(500).json({ 
-        error: 'OPENAI_API_KEY not configured', 
-        code: 'CONFIG_MISSING'
-      });
-    }
+// Gemini Service Initialization (requires server instance)
+// We'll initialize it after the server starts listening
 
-    // Use the OpenAI Realtime API to get an ephemeral token for WebRTC
-    const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-        'OpenAI-Beta': 'realtime=v1'
-      },
-      body: JSON.stringify({
-        model: 'gpt-realtime',
-        voice: 'echo'
-      })
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      return res.status(500).json({ 
-        error: 'OpenAI API error', 
-        status: response.status,
-        details: data 
-      });
-    }
-
-    const token = data.client_secret?.value;
-    const expires_at = data.client_secret?.expires_at;
-
-    if (!token) {
-      return res.status(500).json({ 
-        error: 'No token in OpenAI response', 
-        data 
-      });
-    }
-
-    return res.status(200).json({ token, expires_at });
-  } catch (error) {
-    return res.status(500).json({ 
-      error: 'Server error', 
-      message: error?.message || String(error)
-    });
-  }
-});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -636,6 +589,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Ti-Sang server running on port ${PORT}`);
+  // Initialize Gemini Service with the HTTP server instance for WebSocket support
+  geminiService.initialize(server);
 });
