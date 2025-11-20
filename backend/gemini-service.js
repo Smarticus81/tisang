@@ -1,10 +1,8 @@
-import { Client } from '@google/genai';
 import { WebSocketServer, WebSocket } from 'ws';
 
 class GeminiService {
     constructor() {
         this.apiKey = process.env.GOOGLE_GENAI_API_KEY;
-        this.client = null;
         this.model = 'gemini-2.0-flash-exp';
         this.wss = null;
     }
@@ -17,7 +15,6 @@ class GeminiService {
 
         try {
             this.wss = new WebSocketServer({ server, path: '/api/gemini/stream' });
-            this.client = new Client({ apiKey: this.apiKey });
             console.log('✅ Gemini Service initialized');
             this.setupWebSocket();
             return true;

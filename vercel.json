@@ -1,6 +1,7 @@
 {
   "version": 2,
-  "framework": "vite",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "note": "This project is optimized for Railway deployment due to WebSocket requirements.",
+  "github": {
+    "silent": true
+  }
 }
