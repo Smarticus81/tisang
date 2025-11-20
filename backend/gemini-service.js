@@ -41,27 +41,41 @@ class GeminiService {
                 geminiWs.on('open', () => {
                     console.log('✅ Connected to Google Gemini Live API');
 
-                    // Initial setup message
+                    // Initial setup message with speech configuration
                     const setupMsg = {
                         setup: {
-                            model: "models/gemini-2.0-flash-exp", // Using latest available model for live
+                            model: "models/gemini-2.0-flash-exp",
                             generationConfig: {
-                                responseModalities: ["AUDIO"]
+                                responseModalities: ["AUDIO"],
+                                speechConfig: {
+                                    voiceConfig: {
+                                        prebuiltVoiceConfig: {
+                                            voiceName: "Aoede"
+                                        }
+                                    }
+                                }
                             }
                         }
                     };
                     geminiWs.send(JSON.stringify(setupMsg));
+                    console.log('📡 Sent setup message with audio output configuration');
                 });
 
                 geminiWs.on('message', (data) => {
                     try {
                         const response = JSON.parse(data.toString());
 
+                        // Log setup acknowledgment
+                        if (response.setupComplete) {
+                            console.log('✅ Gemini setup complete');
+                        }
+
                         // Forward audio to client
                         if (response.serverContent?.modelTurn?.parts) {
                             const parts = response.serverContent.modelTurn.parts;
                             for (const part of parts) {
-                                if (part.inlineData && part.inlineData.mimeType.startsWith('audio/')) {
+                                if (part.inlineData && part.inlineData.mimeType?.startsWith('audio/')) {
+                                    console.log('🔊 Forwarding audio chunk to client');
                                     // Forward audio chunk
                                     ws.send(JSON.stringify({
                                         type: 'audio',
