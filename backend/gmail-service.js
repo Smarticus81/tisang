@@ -47,35 +47,47 @@ class GmailService {
         credentials = JSON.parse(await fs.readFile(CREDENTIALS_PATH, 'utf8'));
       }
       const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
-      
-      // Use our auth redirect endpoint
-      const redirectUri = process.env.NODE_ENV === 'production' 
+
+      // Dynamically determine redirect URI based on environment
+      const redirectUri = process.env.RAILWAY_PUBLIC_DOMAIN
+        ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/api/gmail/auth-redirect`
+        : process.env.NODE_ENV === 'production'
         ? 'https://tisang-production.up.railway.app/api/gmail/auth-redirect'
         : 'http://localhost:3000/api/gmail/auth-redirect';
-      
+
+      console.log(`📍 Gmail OAuth redirect URI: ${redirectUri}`);
+
       this.auth = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
       // Check if we have a stored token (prefer env var for cloud)
+      let hasToken = false;
       const tokenFromEnv = process.env.GMAIL_TOKEN_JSON;
       if (tokenFromEnv) {
         try {
           this.auth.setCredentials(JSON.parse(tokenFromEnv));
+          hasToken = true;
+          console.log('✅ Gmail token loaded from environment');
         } catch (e) {
           console.error('Failed to parse GMAIL_TOKEN_JSON env var:', e?.message);
-          return false;
         }
       } else {
         try {
           const token = await fs.readFile(TOKEN_PATH, 'utf8');
           this.auth.setCredentials(JSON.parse(token));
+          hasToken = true;
+          console.log('✅ Gmail token loaded from file');
         } catch (err) {
-          console.log('No stored Gmail token found. Gmail features will require authentication.');
-          return false;
+          console.log('ℹ️  No stored Gmail token found. Gmail OAuth will be required.');
         }
       }
 
-      this.gmail = google.gmail({ version: 'v1', auth: this.auth });
-      this.calendar = google.calendar({ version: 'v3', auth: this.auth });
+      // Initialize Gmail and Calendar clients if we have a token
+      if (hasToken) {
+        this.gmail = google.gmail({ version: 'v1', auth: this.auth });
+        this.calendar = google.calendar({ version: 'v3', auth: this.auth });
+      }
+
+      // Return true if we have OAuth credentials (can generate auth URLs even without token)
       return true;
     } catch (error) {
       console.error('Failed to initialize Gmail service:', error);
