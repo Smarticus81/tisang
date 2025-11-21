@@ -99,6 +99,7 @@ const WebRTCApp: React.FC = () => {
 
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
+  const [voiceProvider, setVoiceProvider] = useState<'gemini' | 'openai'>('gemini');
 
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
@@ -108,6 +109,11 @@ const WebRTCApp: React.FC = () => {
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isPlayingRef = useRef(false);
   const nextPlayTimeRef = useRef(0);
+
+  // OpenAI Realtime API refs
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
 
   const recognizerRef = useRef<SpeechRecognition | null>(null);
   const wakeRunningRef = useRef<boolean>(false);
@@ -419,6 +425,168 @@ const WebRTCApp: React.FC = () => {
     setListening(false);
   }, []);
 
+  // Connect to OpenAI Realtime API
+  const connectToOpenAI = useCallback(async () => {
+    if (connected || loading) return;
+    setLoading(true);
+    setError('');
+
+    try {
+      // Get ephemeral token from our backend
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const tokenWs = new WebSocket(`${protocol}//${host}/api/openai/token`);
+
+      tokenWs.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'error') {
+          setError(data.message);
+          setLoading(false);
+          tokenWs.close();
+          return;
+        }
+
+        if (data.type === 'token') {
+          const token = data.data.token;
+          tokenWs.close();
+
+          // Create RTCPeerConnection
+          const pc = new RTCPeerConnection();
+          peerConnectionRef.current = pc;
+
+          // Set up audio element for model output
+          const audioElement = document.createElement("audio");
+          audioElement.autoplay = true;
+          audioElementRef.current = audioElement;
+
+          pc.ontrack = (e) => {
+            audioElement.srcObject = e.streams[0];
+            console.log('🎵 Connected to OpenAI audio stream');
+            setSpeaking(true);
+          };
+
+          // Add local microphone audio
+          const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaStreamRef.current = mediaStream;
+          pc.addTrack(mediaStream.getTracks()[0]);
+
+          // Set up data channel for events
+          const dataChannel = pc.createDataChannel("oai-events");
+          dataChannelRef.current = dataChannel;
+
+          dataChannel.onopen = () => {
+            console.log('🔗 Data channel opened');
+            setConnected(true);
+            setLoading(false);
+            setListening(true);
+
+            // Send session configuration
+            const sessionUpdateEvent = {
+              type: "session.update",
+              session: {
+                instructions: "You are a friendly voice assistant named Ti-Sang. Keep responses concise and natural. You have access to various tools for email, calendar, web search, and more.",
+                voice: "shimmer",
+                turn_detection: { type: "server_vad" },
+                input_audio_format: "pcm16",
+                output_audio_format: "pcm16",
+                input_audio_transcription: { model: "whisper-1" }
+              }
+            };
+            dataChannel.send(JSON.stringify(sessionUpdateEvent));
+
+            if (shouldGreetOnConnectRef.current) {
+              shouldGreetOnConnectRef.current = false;
+              // Trigger greeting
+              setTimeout(() => {
+                dataChannel.send(JSON.stringify({
+                  type: "conversation.item.create",
+                  item: {
+                    type: "message",
+                    role: "user",
+                    content: [{ type: "input_text", text: WAKE_GREETING }]
+                  }
+                }));
+                dataChannel.send(JSON.stringify({ type: "response.create" }));
+              }, 500);
+            }
+          };
+
+          dataChannel.onmessage = (e) => {
+            try {
+              const event = JSON.parse(e.data);
+              if (event.type === 'response.audio.delta') {
+                // Audio is handled via WebRTC audio track
+              } else if (event.type === 'response.audio.done') {
+                setSpeaking(false);
+              }
+            } catch (err) {
+              console.error('Data channel message error:', err);
+            }
+          };
+
+          // Create offer and set local description
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
+
+          // Send offer to OpenAI Realtime API
+          const sdpResponse = await fetch(`https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17`, {
+            method: 'POST',
+            body: offer.sdp,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/sdp'
+            }
+          });
+
+          if (!sdpResponse.ok) {
+            throw new Error('Failed to connect to OpenAI');
+          }
+
+          const answerSdp = await sdpResponse.text();
+          await pc.setRemoteDescription({
+            type: 'answer',
+            sdp: answerSdp
+          });
+
+          console.log('✅ Connected to OpenAI Realtime API');
+        }
+      };
+
+      tokenWs.onerror = () => {
+        setError('Failed to get OpenAI token');
+        setLoading(false);
+      };
+
+    } catch (e) {
+      console.error('OpenAI connection error:', e);
+      setError('Failed to connect to OpenAI');
+      setLoading(false);
+    }
+  }, [connected, loading]);
+
+  const disconnectFromOpenAI = useCallback(() => {
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    if (dataChannelRef.current) {
+      dataChannelRef.current.close();
+      dataChannelRef.current = null;
+    }
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.srcObject = null;
+      audioElementRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setConnected(false);
+    setListening(false);
+    setSpeaking(false);
+  }, []);
+
   // Wake Word Logic
   const detectWakeWord = useCallback((transcript: string) => {
     const lower = sanitize(transcript);
@@ -494,11 +662,19 @@ const WebRTCApp: React.FC = () => {
 
   const handleStartListening = () => {
     shouldGreetOnConnectRef.current = true;
-    connectToGemini();
+    if (voiceProvider === 'gemini') {
+      connectToGemini();
+    } else {
+      connectToOpenAI();
+    }
   };
 
   const handleStopListening = () => {
-    disconnectFromGemini();
+    if (voiceProvider === 'gemini') {
+      disconnectFromGemini();
+    } else {
+      disconnectFromOpenAI();
+    }
     if (wakeWordEnabled) {
       startWakeRecognition();
     }
@@ -517,7 +693,7 @@ const WebRTCApp: React.FC = () => {
 
       <div className="app-container">
         <div className="status-indicators">
-          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title="Gemini Connection" />
+          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title={`${voiceProvider === 'gemini' ? 'Gemini' : 'OpenAI'} Connection`} />
           <div className={`status-dot ${gmailStatus === 'available' ? 'connected' : 'error'}`} title="Gmail Connection" />
         </div>
 
@@ -532,7 +708,7 @@ const WebRTCApp: React.FC = () => {
               ) : speaking ? (
                 <span className="agent-text">Speaking...</span>
               ) : loading ? (
-                <span className="agent-text">Connecting to Gemini...</span>
+                <span className="agent-text">Connecting to {voiceProvider === 'gemini' ? 'Gemini' : 'OpenAI'}...</span>
               ) : (
                 <span className="user-text">Say "Ti-Sang" or press Start</span>
               )}
@@ -591,6 +767,24 @@ const WebRTCApp: React.FC = () => {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
+            </svg>
+          </button>
+
+          <button
+            className={`hud-btn ${voiceProvider === 'openai' ? 'active' : ''}`}
+            onClick={() => {
+              if (!connected && !loading) {
+                setVoiceProvider(voiceProvider === 'gemini' ? 'openai' : 'gemini');
+              }
+            }}
+            disabled={connected || loading}
+            title={`Voice Provider: ${voiceProvider === 'gemini' ? 'Gemini' : 'OpenAI'}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <text x="12" y="16" fontSize="10" fill="currentColor" textAnchor="middle" fontWeight="bold">
+                {voiceProvider === 'gemini' ? 'G' : 'AI'}
+              </text>
             </svg>
           </button>
         </div>

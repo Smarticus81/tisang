@@ -1,7 +1,0 @@
-{
-  "version": 2,
-  "note": "This project is optimized for Railway deployment due to WebSocket requirements.",
-  "github": {
-    "silent": true
-  }
-}

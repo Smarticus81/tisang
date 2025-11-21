@@ -6,6 +6,7 @@ import GmailService from './backend/gmail-service.js';
 import SearchService from './backend/search-service.js';
 import UtilityService from './backend/utility-service.js';
 import GeminiService from './backend/gemini-service.js';
+import OpenAIService from './backend/openai-service.js';
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -19,6 +20,7 @@ const gmailService = new GmailService();
 const searchService = new SearchService();
 const utilityService = new UtilityService();
 const geminiService = new GeminiService();
+const openaiService = new OpenAIService();
 
 // Initialize Gmail service
 let gmailAvailable = false;
@@ -591,6 +593,7 @@ app.get('*', (req, res) => {
 
 const server = app.listen(PORT, () => {
   console.log(`Ti-Sang server running on port ${PORT}`);
-  // Initialize Gemini Service with the HTTP server instance for WebSocket support
+  // Initialize voice services with the HTTP server instance for WebSocket support
   geminiService.initialize(server);
+  openaiService.initialize(server);
 });
