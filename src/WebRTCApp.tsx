@@ -144,26 +144,43 @@ const WebRTCApp: React.FC = () => {
     checkGmailStatus();
   }, [checkGmailStatus]);
 
-  const triggerGmailSetup = () => {
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
-
-    window.open(
-      '/api/gmail/auth-url',
-      'GmailAuth',
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-
-    const checkInterval = setInterval(async () => {
-      await checkGmailStatus();
-      if (gmailStatus === 'available') {
-        clearInterval(checkInterval);
+  const triggerGmailSetup = async () => {
+    try {
+      // Fetch the auth URL from backend
+      const response = await fetch('/api/gmail/auth-url');
+      if (!response.ok) {
+        setError('Gmail setup failed. Check credentials.');
+        return;
       }
-    }, 2000);
 
-    setTimeout(() => clearInterval(checkInterval), 60000);
+      const data = await response.json();
+      const authUrl = data.authUrl;
+
+      // Open popup window
+      const width = 500;
+      const height = 600;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+
+      window.open(
+        authUrl,
+        'GmailAuth',
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
+      );
+
+      // Poll for status change
+      const checkInterval = setInterval(async () => {
+        await checkGmailStatus();
+        if (gmailStatus === 'available') {
+          clearInterval(checkInterval);
+        }
+      }, 2000);
+
+      setTimeout(() => clearInterval(checkInterval), 60000);
+    } catch (e) {
+      console.error('Gmail setup error:', e);
+      setError('Failed to setup Gmail');
+    }
   };
 
   // Audio Playback Logic
@@ -204,6 +221,11 @@ const WebRTCApp: React.FC = () => {
 
   const handleAudioMessage = useCallback((base64Audio: string) => {
     try {
+      if (!base64Audio) {
+        console.warn('⚠️ Empty audio data received');
+        return;
+      }
+
       const binaryString = window.atob(base64Audio);
       const len = binaryString.length;
       const bytes = new Float32Array(len / 2);
@@ -226,10 +248,11 @@ const WebRTCApp: React.FC = () => {
       let sum = 0;
       for (let i = 0; i < bytes.length; i++) sum += Math.abs(bytes[i]);
       const avg = sum / bytes.length;
-      setMouthScale(1 + avg * 5);
+      const targetScale = 1 + Math.min(avg * 8, 2);
+      setMouthScale(targetScale);
 
     } catch (e) {
-      console.error('Error processing audio message:', e);
+      console.error('❌ Error processing audio message:', e);
     }
   }, [playNextAudioChunk]);
 
@@ -296,12 +319,15 @@ const WebRTCApp: React.FC = () => {
       const ws = new WebSocket(`${protocol}//${host}/api/gemini/stream`);
 
       ws.onopen = () => {
-        console.log('Connected to Gemini Backend');
+        console.log('✅ Connected to Gemini Backend WebSocket');
         setConnected(true);
         setLoading(false);
         setListening(true);
         wsRef.current = ws;
-        startAudioCapture();
+        startAudioCapture().catch(e => {
+          console.error('Failed to start audio capture:', e);
+          setError('Microphone access required');
+        });
 
         // Send session update with tools
         const sessionUpdate = {
@@ -394,7 +420,7 @@ const WebRTCApp: React.FC = () => {
       };
 
       ws.onclose = () => {
-        console.log('Disconnected from Gemini Backend');
+        console.log('🔌 Disconnected from Gemini Backend');
         setConnected(false);
         setListening(false);
         setLoading(false);
@@ -403,14 +429,14 @@ const WebRTCApp: React.FC = () => {
       };
 
       ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-        setError('Connection error');
+        console.error('❌ Gemini WebSocket error:', err);
+        setError('Connection error. Check GOOGLE_GENAI_API_KEY.');
         setLoading(false);
       };
 
     } catch (e) {
-      console.error('Connection failed:', e);
-      setError('Failed to connect');
+      console.error('❌ Gemini connection failed:', e);
+      setError('Failed to connect to Gemini');
       setLoading(false);
     }
   }, [connected, loading, handleAudioMessage]);

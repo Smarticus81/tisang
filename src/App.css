@@ -80,8 +80,8 @@ body {
 /* The Core - Reactive Avatar */
 .core-container {
   position: relative;
-  width: 300px;
-  height: 300px;
+  width: 350px;
+  height: 350px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -89,38 +89,57 @@ body {
 }
 
 .core-orb {
-  width: 120px;
-  height: 120px;
+  width: 140px;
+  height: 140px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--primary-cyan) 40%, rgba(0, 0, 0, 0) 70%);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), var(--primary-cyan) 35%, var(--secondary-violet) 60%, rgba(0, 0, 0, 0) 75%);
   box-shadow:
-    0 0 30px var(--primary-cyan),
-    0 0 60px var(--primary-cyan),
-    inset 0 0 20px rgba(255, 255, 255, 0.5);
+    0 0 40px rgba(0, 243, 255, 0.6),
+    0 0 80px rgba(0, 243, 255, 0.4),
+    0 0 120px rgba(0, 243, 255, 0.2),
+    inset 0 0 30px rgba(255, 255, 255, 0.4);
   position: relative;
   z-index: 10;
   transition: all 0.3s var(--ease-out-expo);
+  filter: blur(0.5px);
 }
 
 /* Core States */
+.core-orb.idle {
+  animation: float 4s ease-in-out infinite;
+}
+
 .core-orb.listening {
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--primary-cyan) 30%, rgba(0, 243, 255, 0.6) 60%, rgba(0, 0, 0, 0) 75%);
   box-shadow:
-    0 0 40px var(--primary-cyan),
-    0 0 80px var(--primary-cyan),
-    inset 0 0 30px rgba(255, 255, 255, 0.8);
-  animation: pulse-fast 1s infinite alternate;
+    0 0 50px rgba(0, 243, 255, 0.8),
+    0 0 100px rgba(0, 243, 255, 0.6),
+    0 0 150px rgba(0, 243, 255, 0.3),
+    inset 0 0 40px rgba(255, 255, 255, 0.8);
+  animation: pulse-fast 1.2s infinite alternate;
+  filter: blur(1px);
 }
 
 .core-orb.thinking {
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--secondary-violet) 40%, rgba(0, 0, 0, 0) 70%);
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), var(--secondary-violet) 35%, rgba(188, 19, 254, 0.6) 60%, rgba(0, 0, 0, 0) 75%);
   box-shadow:
-    0 0 30px var(--secondary-violet),
-    0 0 60px var(--secondary-violet);
-  animation: breathe 3s infinite ease-in-out;
+    0 0 50px rgba(188, 19, 254, 0.7),
+    0 0 100px rgba(188, 19, 254, 0.5),
+    0 0 150px rgba(188, 19, 254, 0.3),
+    inset 0 0 30px rgba(255, 255, 255, 0.6);
+  animation: breathe 2.5s infinite ease-in-out;
+  filter: blur(1px);
 }
 
 .core-orb.speaking {
-  animation: vibrate 0.1s infinite;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), var(--accent-amber) 30%, var(--primary-cyan) 60%, rgba(0, 0, 0, 0) 75%);
+  box-shadow:
+    0 0 60px rgba(255, 170, 0, 0.8),
+    0 0 120px rgba(0, 243, 255, 0.6),
+    0 0 180px rgba(188, 19, 254, 0.3),
+    inset 0 0 50px rgba(255, 255, 255, 0.9);
+  animation: vibrate-reactive 0.15s infinite;
+  filter: blur(1.5px);
 }
 
 /* Orbital Rings */
@@ -128,30 +147,33 @@ body {
   position: absolute;
   border-radius: 50%;
   border: 1px solid rgba(0, 243, 255, 0.3);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
   pointer-events: none;
 }
 
 .ring-1 {
-  width: 180px;
-  height: 180px;
+  width: 200px;
+  height: 200px;
   border-top-color: transparent;
   border-bottom-color: transparent;
-  animation: spin 10s linear infinite;
+  animation: spin 12s linear infinite;
+  box-shadow: 0 0 20px rgba(0, 243, 255, 0.3);
 }
 
 .ring-2 {
-  width: 240px;
-  height: 240px;
-  border: 1px dashed rgba(188, 19, 254, 0.3);
-  animation: spin-reverse 20s linear infinite;
+  width: 270px;
+  height: 270px;
+  border: 1px dashed rgba(188, 19, 254, 0.4);
+  animation: spin-reverse 18s linear infinite;
+  box-shadow: 0 0 25px rgba(188, 19, 254, 0.2);
 }
 
 .ring-3 {
-  width: 280px;
-  height: 280px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  animation: pulse-ring 4s ease-in-out infinite;
+  width: 330px;
+  height: 330px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: pulse-ring 5s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
 }
 
 /* Animations */
@@ -167,51 +189,63 @@ body {
   }
 }
 
-@keyframes breathe {
-
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.8;
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
   }
-
   50% {
-    transform: scale(1.05);
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.85;
+    filter: blur(1px);
+  }
+  50% {
+    transform: scale(1.08);
     opacity: 1;
+    filter: blur(1.5px);
   }
 }
 
 @keyframes pulse-fast {
   0% {
     transform: scale(0.95);
-    box-shadow: 0 0 20px var(--primary-cyan);
+    box-shadow:
+      0 0 30px rgba(0, 243, 255, 0.6),
+      0 0 60px rgba(0, 243, 255, 0.4),
+      0 0 90px rgba(0, 243, 255, 0.2);
   }
-
   100% {
-    transform: scale(1.1);
-    box-shadow: 0 0 60px var(--primary-cyan);
+    transform: scale(1.12);
+    box-shadow:
+      0 0 50px rgba(0, 243, 255, 0.9),
+      0 0 100px rgba(0, 243, 255, 0.7),
+      0 0 150px rgba(0, 243, 255, 0.4);
   }
 }
 
-@keyframes vibrate {
+@keyframes vibrate-reactive {
   0% {
     transform: translate(0, 0) scale(1);
   }
-
-  25% {
-    transform: translate(1px, 1px) scale(1.02);
+  20% {
+    transform: translate(2px, 2px) scale(1.03);
   }
-
-  50% {
-    transform: translate(-1px, -1px) scale(1);
+  40% {
+    transform: translate(-2px, -1px) scale(1.01);
   }
-
-  75% {
-    transform: translate(-1px, 1px) scale(1.02);
+  60% {
+    transform: translate(-1px, 2px) scale(1.04);
   }
-
+  80% {
+    transform: translate(2px, -2px) scale(1.02);
+  }
   100% {
-    transform: translate(1px, -1px) scale(1);
+    transform: translate(0, 0) scale(1);
   }
 }
 
