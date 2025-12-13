@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "npm run generate-icons && tsc -b && vite build",
+    "generate-icons": "node scripts/generate-icons.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node server.js"
@@ -23,6 +24,7 @@
     "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "sharp": "^0.34.5",
     "ws": "^8.18.3"
   },
   "devDependencies": {
