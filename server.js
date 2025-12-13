@@ -2,10 +2,14 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 import GmailService from './backend/gmail-service.js';
 import SearchService from './backend/search-service.js';
 import UtilityService from './backend/utility-service.js';
 import GeminiService from './backend/gemini-service.js';
+
+// Load environment variables
+dotenv.config();
 
 // ES module equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
