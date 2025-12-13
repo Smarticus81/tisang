@@ -319,9 +319,14 @@ const WebRTCApp: React.FC = () => {
   // Initialize Audio Context
   useEffect(() => {
     const Ctx = window.AudioContext || window.webkitAudioContext;
-    audioContextRef.current = new Ctx({ sampleRate: 24000 });
+    try {
+      // Let the browser choose the best sample rate for the device
+      audioContextRef.current = new Ctx();
+    } catch (error) {
+      console.error('Failed to create AudioContext:', error);
+    }
     return () => {
-      audioContextRef.current?.close();
+      audioContextRef.current?.close().catch(() => {});
     };
   }, []);
 
@@ -667,23 +672,27 @@ const WebRTCApp: React.FC = () => {
       remoteLevelIntervalRef.current = null;
     }
 
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx();
-    remoteAudioCtxRef.current = ctx;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      remoteAudioCtxRef.current = ctx;
     const source = ctx.createMediaStreamSource(remoteStreamRef.current);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
     source.connect(analyser);
     remoteAnalyserRef.current = analyser;
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    remoteLevelIntervalRef.current = window.setInterval(() => {
-      if (!remoteAnalyserRef.current) return;
-      if (!speaking) return;
-      remoteAnalyserRef.current.getByteFrequencyData(dataArray);
-      const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      setAudioLevel(Math.min(avg / 128, 1));
-    }, 50);
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      remoteLevelIntervalRef.current = window.setInterval(() => {
+        if (!remoteAnalyserRef.current) return;
+        if (!speaking) return;
+        remoteAnalyserRef.current.getByteFrequencyData(dataArray);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        setAudioLevel(Math.min(avg / 128, 1));
+      }, 50);
+    } catch (error) {
+      console.error('Failed to start remote audio level meter:', error);
+    }
   }, [speaking]);
 
   const stopRemoteAudioLevelMeter = useCallback(() => {
@@ -888,18 +897,22 @@ const WebRTCApp: React.FC = () => {
 
       // Local mic level meter for orb when listening
       if (audioContextRef.current) {
-        const micSource = audioContextRef.current.createMediaStreamSource(stream);
-        const analyser = audioContextRef.current.createAnalyser();
-        analyser.fftSize = 256;
-        micSource.connect(analyser);
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const id = window.setInterval(() => {
-          if (!listeningRef.current || speaking) return;
-          analyser.getByteFrequencyData(dataArray);
-          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-          setAudioLevel(Math.min(avg / 128, 1));
-        }, 50);
-        micLevelIntervalRef.current = id;
+        try {
+          const micSource = audioContextRef.current.createMediaStreamSource(stream);
+          const analyser = audioContextRef.current.createAnalyser();
+          analyser.fftSize = 256;
+          micSource.connect(analyser);
+          const dataArray = new Uint8Array(analyser.frequencyBinCount);
+          const id = window.setInterval(() => {
+            if (!listeningRef.current || speaking) return;
+            analyser.getByteFrequencyData(dataArray);
+            const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            setAudioLevel(Math.min(avg / 128, 1));
+          }, 50);
+          micLevelIntervalRef.current = id;
+        } catch (error) {
+          console.error('Failed to start mic level meter:', error);
+        }
       }
 
       const offer = await pc.createOffer({ offerToReceiveAudio: true });
