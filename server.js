@@ -49,7 +49,7 @@ async function createOpenAIRealtimeEphemeralToken() {
   }
 
   const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
-  const voice = process.env.OPENAI_VOICE || 'fable';
+  const voice = process.env.OPENAI_VOICE || 'alloy';
 
   // Mint an ephemeral client secret on the server using a standard API key.
   // The browser uses the ephemeral key to connect directly to Realtime via WebRTC.
