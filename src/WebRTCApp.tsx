@@ -709,7 +709,7 @@ const WebRTCApp: React.FC = () => {
       const tokenJson = (await tokenResp.json().catch(() => null)) as unknown;
       const tokenData = asObject(tokenJson);
       const token = tokenData ? asString(tokenData.token) : null;
-      const model = (tokenData && asString(tokenData.model)) || 'gpt-4o-realtime-preview-2024-12-17';
+      const model = (tokenData && asString(tokenData.model)) || 'gpt-realtime';
       if (!tokenResp.ok || !token) {
         const errMsg = tokenData ? asString(tokenData.error) : null;
         throw new Error(errMsg || 'Failed to get realtime token');

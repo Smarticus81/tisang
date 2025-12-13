@@ -37,7 +37,7 @@ async function createEphemeralToken() {
     throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY in .env');
   }
 
-  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
+  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime';
   const voice = process.env.OPENAI_VOICE || 'alloy';
 
   const SESSION_CONFIG = {
