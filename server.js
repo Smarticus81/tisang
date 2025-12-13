@@ -172,7 +172,7 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
             <div class="container">
               <h2>Authentication Failed</h2>
               <p>No authorization code received.</p>
-              <p><a href="/">Return to Maylah</a></p>
+              <p><a href="/">Return to Mayler</a></p>
             </div>
           </body>
         </html>
@@ -244,13 +244,13 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
                 }, 500);
               } else if (isStandalone) {
                 // PWA standalone mode - redirect back to app
-                document.getElementById('status').textContent = 'Returning to Maylah...';
+                document.getElementById('status').textContent = 'Returning to Mayler...';
                 setTimeout(() => {
                   window.location.href = '/?auth_success=true';
                 }, 800);
               } else {
                 // Regular browser - redirect
-                document.getElementById('status').textContent = 'Returning to Maylah...';
+                document.getElementById('status').textContent = 'Returning to Mayler...';
                 setTimeout(() => {
                   window.location.href = '/?auth_success=true';
                 }, 800);
@@ -288,7 +288,7 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
           <div class="container">
             <h2>Authentication Error</h2>
             <p>${error.message}</p>
-            <p><a href="/">Return to Maylah</a></p>
+            <p><a href="/">Return to Mayler</a></p>
           </div>
         </body>
       </html>
@@ -620,7 +620,7 @@ app.get('/gmail-setup', (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Maylah - Google Setup</title>
+        <title>Mayler - Google Setup</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body { 
@@ -666,7 +666,7 @@ app.get('/gmail-setup', (req, res) => {
         </style>
       </head>
       <body>
-        <h1 class="header">Maylah - Google Setup</h1>
+        <h1 class="header">Mayler - Google Setup</h1>
         
         <p style="text-align: center; color: rgba(255,255,255,0.6);">
           Connect your Google account to enable Gmail and Calendar features.
@@ -695,14 +695,14 @@ app.get('/gmail-setup', (req, res) => {
             <li>Configure OAuth consent screen if prompted:
               <ul>
                 <li>User Type: External</li>
-                <li>App name: "Maylah"</li>
+                <li>App name: "Mayler"</li>
                 <li>Add your email as a test user</li>
               </ul>
             </li>
             <li>Create OAuth 2.0 Client ID:
               <ul>
                 <li>Application type: "Web application"</li>
-                <li>Name: "Maylah"</li>
+                <li>Name: "Mayler"</li>
                 <li>Authorized redirect URIs: <span class="code">https://your-domain.com/api/gmail/auth-redirect</span></li>
               </ul>
             </li>
@@ -721,7 +721,7 @@ app.get('/gmail-setup', (req, res) => {
 
         <div class="step">
           <h3>Step 4: Authenticate</h3>
-          <p>Once credentials are configured, open Maylah and:</p>
+          <p>Once credentials are configured, open Mayler and:</p>
           <ul>
             <li>Tap the settings icon</li>
             <li>Tap "Connect" next to Google Account</li>
@@ -730,7 +730,7 @@ app.get('/gmail-setup', (req, res) => {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <a href="/" class="button">Back to Maylah</a>
+          <a href="/" class="button">Back to Mayler</a>
           <a href="https://console.cloud.google.com/" target="_blank" class="button">Google Cloud Console</a>
         </div>
       </body>
@@ -761,6 +761,6 @@ app.get('*', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`Maylah server running on port ${PORT}`);
+  console.log(`Mayler server running on port ${PORT}`);
   geminiService.initialize(server);
 });

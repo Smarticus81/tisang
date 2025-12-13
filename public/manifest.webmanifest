@@ -1,11 +1,11 @@
 {
-  "name": "Maylah",
-  "short_name": "Maylah",
+  "name": "Mayler",
+  "short_name": "Mayler",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#7dd3fc",
+  "background_color": "#fafafa",
+  "theme_color": "#d4a5a5",
   "description": "Your laid-back AI assistant for voice conversations, calendar, email, and more.",
   "orientation": "portrait-primary",
   "icons": [

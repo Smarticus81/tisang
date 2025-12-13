@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 
-const MAYLAH_PERSONALITY = `You are Maylah, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done.
+const MAYLER_PERSONALITY = `You are Mayler, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done.
 
 Your communication style:
 - Speak naturally and conversationally, but stay focused
@@ -44,7 +44,7 @@ class GeminiService {
 
   setupWebSocket() {
     this.wss.on('connection', (ws) => {
-      console.log('Client connected to Maylah');
+      console.log('Client connected to Mayler');
 
       let geminiWs = null;
       let pendingToolCalls = new Map();
@@ -77,7 +77,7 @@ class GeminiService {
                   }
                 },
                 systemInstruction: {
-                  parts: [{ text: MAYLAH_PERSONALITY }]
+                  parts: [{ text: MAYLER_PERSONALITY }]
                 },
                 tools: [{
                   functionDeclarations: [

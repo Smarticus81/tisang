@@ -69,7 +69,7 @@ const similarity = (a: string, b: string) => {
   return 1 - dist / maxLen;
 };
 
-const WAKE_WORDS = ['maylah', 'may-lah', 'may lah', 'hey maylah', 'hey may-lah', 'mayla', 'maila'];
+const WAKE_WORDS = ['mayler', 'may-ler', 'may ler', 'hey mayler', 'hey may-ler', 'mailer', 'maler'];
 const wakeThreshold = 0.6;
 const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -107,44 +107,44 @@ const LiquidOrb: React.FC<{
 
       ctx.clearRect(0, 0, size, size);
 
-      // Dynamic parameters based on state
+      // Dynamic parameters based on state - zen powder colors
       let waveIntensity = 0.08;
       let waveSpeed = 0.8;
-      let glowIntensity = 0.3;
-      let primaryHue = 200;
-      let secondaryHue = 260;
+      let glowIntensity = 0.2;
+      let primaryHue = 350; // Soft rose/pink
+      let secondarHue = 190; // Soft blue-grey
 
       switch (state) {
         case 'listening':
           waveIntensity = 0.12 + audioLevel * 0.15;
           waveSpeed = 1.2;
-          glowIntensity = 0.5 + audioLevel * 0.3;
-          primaryHue = 180;
-          secondaryHue = 220;
+          glowIntensity = 0.3 + audioLevel * 0.2;
+          primaryHue = 355; // Powder pink
+          secondaryHue = 185; // Powder blue
           break;
         case 'thinking':
           waveIntensity = 0.1;
           waveSpeed = 2;
-          glowIntensity = 0.4;
-          primaryHue = 260;
-          secondaryHue = 300;
+          glowIntensity = 0.25;
+          primaryHue = 140; // Soft green
+          secondaryHue = 180; // Soft aqua
           break;
         case 'speaking':
           waveIntensity = 0.15 + audioLevel * 0.25;
           waveSpeed = 1.5;
-          glowIntensity = 0.6 + audioLevel * 0.4;
-          primaryHue = 170;
-          secondaryHue = 200;
+          glowIntensity = 0.35 + audioLevel * 0.3;
+          primaryHue = 350; // Rose
+          secondaryHue = 195; // Sky blue
           break;
       }
 
-      // Outer glow layers
+      // Outer glow layers - soft diffuse powder effect
       for (let i = 4; i >= 0; i--) {
         const glowRadius = baseRadius + 30 + i * 15;
-        const alpha = (glowIntensity * 0.08) * (1 - i * 0.15);
+        const alpha = (glowIntensity * 0.06) * (1 - i * 0.15);
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
-        gradient.addColorStop(0, `hsla(${primaryHue}, 60%, 70%, ${alpha})`);
-        gradient.addColorStop(0.5, `hsla(${secondaryHue}, 50%, 60%, ${alpha * 0.5})`);
+        gradient.addColorStop(0, `hsla(${primaryHue}, 35%, 85%, ${alpha})`);
+        gradient.addColorStop(0.5, `hsla(${secondaryHue}, 30%, 80%, ${alpha * 0.5})`);
         gradient.addColorStop(1, 'transparent');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, size, size);
@@ -176,21 +176,21 @@ const LiquidOrb: React.FC<{
       }
       ctx.closePath();
 
-      // Glass gradient fill
+      // Glass gradient fill - zen powder effect
       const glassGradient = ctx.createRadialGradient(
         centerX - 20, centerY - 30, 0,
         centerX, centerY, baseRadius + 20
       );
-      glassGradient.addColorStop(0, `hsla(${primaryHue}, 30%, 95%, 0.9)`);
-      glassGradient.addColorStop(0.3, `hsla(${primaryHue}, 40%, 80%, 0.6)`);
-      glassGradient.addColorStop(0.6, `hsla(${secondaryHue}, 50%, 60%, 0.4)`);
-      glassGradient.addColorStop(1, `hsla(${secondaryHue}, 60%, 40%, 0.2)`);
+      glassGradient.addColorStop(0, `hsla(${primaryHue}, 20%, 98%, 0.95)`);
+      glassGradient.addColorStop(0.3, `hsla(${primaryHue}, 25%, 90%, 0.8)`);
+      glassGradient.addColorStop(0.6, `hsla(${secondaryHue}, 20%, 85%, 0.6)`);
+      glassGradient.addColorStop(1, `hsla(${secondaryHue}, 25%, 80%, 0.4)`);
       ctx.fillStyle = glassGradient;
       ctx.fill();
 
-      // Glass border
-      ctx.strokeStyle = `hsla(${primaryHue}, 50%, 80%, 0.3)`;
-      ctx.lineWidth = 1.5;
+      // Glass border - subtle
+      ctx.strokeStyle = `hsla(${primaryHue}, 30%, 75%, 0.15)`;
+      ctx.lineWidth = 1;
       ctx.stroke();
       ctx.restore();
 
@@ -210,18 +210,18 @@ const LiquidOrb: React.FC<{
       ctx.fill();
       ctx.restore();
 
-      // Soundwave rings when speaking or listening
+      // Soundwave rings when speaking or listening - subtle powder effect
       if (state === 'speaking' || state === 'listening') {
         const numRings = 3;
         for (let i = 0; i < numRings; i++) {
           const ringProgress = ((t * 0.5 + i * 0.33) % 1);
           const ringRadius = baseRadius + ringProgress * 60;
-          const ringAlpha = (1 - ringProgress) * 0.3 * (state === 'speaking' ? audioLevel + 0.3 : 0.5);
-          
+          const ringAlpha = (1 - ringProgress) * 0.15 * (state === 'speaking' ? audioLevel + 0.2 : 0.3);
+
           ctx.beginPath();
           ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
-          ctx.strokeStyle = `hsla(${primaryHue}, 60%, 70%, ${ringAlpha})`;
-          ctx.lineWidth = 2 - ringProgress * 1.5;
+          ctx.strokeStyle = `hsla(${primaryHue}, 30%, 80%, ${ringAlpha})`;
+          ctx.lineWidth = 1.5 - ringProgress * 1;
           ctx.stroke();
         }
       }
@@ -344,17 +344,27 @@ const WebRTCApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    checkGoogleStatus();
+    const initAuth = async () => {
+      await checkGoogleStatus();
 
-    // Handle OAuth callback for PWA
-    const urlParams = new URLSearchParams(window.location.search);
-    const authSuccess = urlParams.get('auth_success');
-    if (authSuccess === 'true') {
-      setGoogleStatus('available');
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [checkGoogleStatus]);
+      // Handle OAuth callback for PWA
+      const urlParams = new URLSearchParams(window.location.search);
+      const authSuccess = urlParams.get('auth_success');
+      if (authSuccess === 'true') {
+        setGoogleStatus('available');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        // Automatically open OAuth window on first load if not authenticated
+        const status = await fetch('/api/gmail/status').then(r => r.json()).catch(() => ({ authenticated: false }));
+        if (!status.authenticated) {
+          triggerGoogleAuth();
+        }
+      }
+    };
+
+    initAuth();
+  }, [checkGoogleStatus, triggerGoogleAuth]);
 
   // PWA-compatible OAuth trigger
   const triggerGoogleAuth = useCallback(async () => {
@@ -600,7 +610,9 @@ const WebRTCApp: React.FC = () => {
     sendEvent({
       type: 'session.update',
       session: {
-        instructions: `You are Maylah, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.`,
+        instructions: `You are Mayler, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.
+
+IMPORTANT: When you call the google_auth_setup function, it will automatically open an OAuth window for the user to authenticate. You should tell the user that a window is opening for them to sign in to their Google account.`,
         modalities: ['text', 'audio'],
         voice: 'alloy',
         input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
@@ -611,7 +623,7 @@ const WebRTCApp: React.FC = () => {
           silence_duration_ms: 600,
         },
         tools: [
-          { type: 'function', name: 'google_auth_setup', description: 'Initiates Google authentication for Gmail and Calendar access when the user asks to connect or set up their Google account, Gmail, or Calendar.', parameters: { type: 'object', properties: {} } },
+          { type: 'function', name: 'google_auth_setup', description: 'Opens an OAuth window for the user to authenticate with Google, granting access to Gmail and Calendar. Call this when the user wants to connect their Google account. The window will open automatically.', parameters: { type: 'object', properties: {} } },
           {
             type: 'function',
             name: 'create_calendar_event',
@@ -746,7 +758,7 @@ const WebRTCApp: React.FC = () => {
             item: {
               type: 'message',
               role: 'user',
-              content: [{ type: 'input_text', text: 'Hey Maylah' }],
+              content: [{ type: 'input_text', text: 'Hey Mayler' }],
             },
           });
           sendEvent({ type: 'response.create' });
@@ -1094,7 +1106,7 @@ const WebRTCApp: React.FC = () => {
   else if (listening) orbState = 'listening';
 
   return (
-    <div className="maylah-container">
+    <div className="mayler-container">
       {/* Ambient background */}
       <div className="ambient-bg" />
       <div className="glass-overlay" />
@@ -1169,7 +1181,7 @@ const WebRTCApp: React.FC = () => {
       <main className="main-content">
         {/* Logo/Name */}
         <div className="brand">
-          <h1 className="brand-name">maylah</h1>
+          <h1 className="brand-name">mayler</h1>
         </div>
 
         {/* Orb visualization */}
@@ -1197,7 +1209,7 @@ const WebRTCApp: React.FC = () => {
                     : loading 
                       ? "Connecting..." 
                       : wakeWordEnabled 
-                        ? 'Say "Maylah" to start' 
+                        ? 'Say "Mayler" to start' 
                         : "Tap to start"
               } 
               type="system" 
