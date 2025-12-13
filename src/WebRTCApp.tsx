@@ -307,15 +307,6 @@ const WebRTCApp: React.FC = () => {
     };
   }, []);
 
-  // Manage wake word recognition state
-  useEffect(() => {
-    if (wakeWordEnabled && !listening && !loading && !connected) {
-      startWakeRecognition();
-    } else {
-      stopWakeRecognition();
-    }
-  }, [wakeWordEnabled, listening, loading, connected, startWakeRecognition, stopWakeRecognition]);
-
   // Check Google Status and handle OAuth callback
   const checkGoogleStatus = useCallback(async () => {
     try {
@@ -901,6 +892,22 @@ const WebRTCApp: React.FC = () => {
     return false;
   }, []);
 
+  const handleStartListening = useCallback(async () => {
+    // Resume audio context if suspended (browser autoplay policy)
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+        setShowAudioHint(false);
+      } catch (e) {
+        console.error('Failed to resume audio context:', e);
+        setShowAudioHint(true);
+      }
+    }
+    
+    shouldGreetOnConnectRef.current = true;
+    connectToGemini();
+  }, [connectToGemini]);
+
   const startWakeRecognition = useCallback(() => {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRec) {
@@ -950,7 +957,7 @@ const WebRTCApp: React.FC = () => {
     } catch (e) {
       console.error('Failed to start wake recognition:', e);
     }
-  }, [wakeWordEnabled, listening, detectWakeWord]);
+  }, [wakeWordEnabled, listening, detectWakeWord, handleStartListening]);
 
   const stopWakeRecognition = useCallback(() => {
     if (recognizerRef.current) {
@@ -960,28 +967,21 @@ const WebRTCApp: React.FC = () => {
     wakeRunningRef.current = false;
   }, []);
 
-  const handleStartListening = useCallback(async () => {
-    // Resume audio context if suspended (browser autoplay policy)
-    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-      try {
-        await audioContextRef.current.resume();
-        setShowAudioHint(false);
-      } catch (e) {
-        console.error('Failed to resume audio context:', e);
-        setShowAudioHint(true);
-      }
-    }
-    
-    shouldGreetOnConnectRef.current = true;
-    connectToGemini();
-  }, [connectToGemini]);
-
   const handleStopListening = useCallback(() => {
     disconnectFromGemini();
     if (wakeWordEnabled) {
       startWakeRecognition();
     }
   }, [disconnectFromGemini, wakeWordEnabled, startWakeRecognition]);
+
+  // Manage wake word recognition state
+  useEffect(() => {
+    if (wakeWordEnabled && !listening && !loading && !connected) {
+      startWakeRecognition();
+    } else {
+      stopWakeRecognition();
+    }
+  }, [wakeWordEnabled, listening, loading, connected, startWakeRecognition, stopWakeRecognition]);
 
   // Determine state
   let orbState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
