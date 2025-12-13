@@ -579,6 +579,12 @@ const WebRTCApp: React.FC = () => {
     }
 
     const result = await runTool(name, args);
+
+    // Trigger OAuth window when AI calls google_auth_setup
+    if (name === 'google_auth_setup') {
+      triggerGoogleAuth();
+    }
+
     sendEvent({
       type: 'conversation.item.create',
       item: {
@@ -588,7 +594,7 @@ const WebRTCApp: React.FC = () => {
       },
     });
     sendEvent({ type: 'response.create' });
-  }, [runTool, sendEvent]);
+  }, [runTool, sendEvent, triggerGoogleAuth]);
 
   const configureSession = useCallback(() => {
     sendEvent({
