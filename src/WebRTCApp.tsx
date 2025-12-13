@@ -267,13 +267,25 @@ const WebRTCApp: React.FC = () => {
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
 
-  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(true);
   const [googleStatus, setGoogleStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
   const [showSettings, setShowSettings] = useState(false);
+  const [showAudioHint, setShowAudioHint] = useState(false);
 
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const listeningRef = useRef(false);
+  const wakeWordEnabledRef = useRef(true);
+
+  // Update refs when state changes
+  useEffect(() => {
+    listeningRef.current = listening;
+  }, [listening]);
+
+  useEffect(() => {
+    wakeWordEnabledRef.current = wakeWordEnabled;
+  }, [wakeWordEnabled]);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
   const audioQueueRef = useRef<Float32Array[]>([]);
@@ -294,6 +306,15 @@ const WebRTCApp: React.FC = () => {
       audioContextRef.current?.close();
     };
   }, []);
+
+  // Manage wake word recognition state
+  useEffect(() => {
+    if (wakeWordEnabled && !listening && !loading && !connected) {
+      startWakeRecognition();
+    } else {
+      stopWakeRecognition();
+    }
+  }, [wakeWordEnabled, listening, loading, connected, startWakeRecognition, stopWakeRecognition]);
 
   // Check Google Status and handle OAuth callback
   const checkGoogleStatus = useCallback(async () => {
@@ -912,7 +933,8 @@ const WebRTCApp: React.FC = () => {
       recognition.onend = () => {
         wakeRunningRef.current = false;
         recognizerRef.current = null;
-        if (wakeWordEnabled && !listening) {
+        // Check refs instead of captured state to avoid stale closures
+        if (wakeWordEnabledRef.current && !listeningRef.current) {
           setTimeout(() => startWakeRecognition(), 1000);
         }
       };
@@ -938,17 +960,28 @@ const WebRTCApp: React.FC = () => {
     wakeRunningRef.current = false;
   }, []);
 
-  const handleStartListening = () => {
+  const handleStartListening = useCallback(async () => {
+    // Resume audio context if suspended (browser autoplay policy)
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      try {
+        await audioContextRef.current.resume();
+        setShowAudioHint(false);
+      } catch (e) {
+        console.error('Failed to resume audio context:', e);
+        setShowAudioHint(true);
+      }
+    }
+    
     shouldGreetOnConnectRef.current = true;
     connectToGemini();
-  };
+  }, [connectToGemini]);
 
-  const handleStopListening = () => {
+  const handleStopListening = useCallback(() => {
     disconnectFromGemini();
     if (wakeWordEnabled) {
       startWakeRecognition();
     }
-  };
+  }, [disconnectFromGemini, wakeWordEnabled, startWakeRecognition]);
 
   // Determine state
   let orbState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
@@ -964,6 +997,16 @@ const WebRTCApp: React.FC = () => {
 
       {/* Status indicator */}
       <div className="status-bar">
+        {showAudioHint && (
+          <div className="audio-hint" onClick={() => {
+            if (audioContextRef.current) {
+              audioContextRef.current.resume();
+              setShowAudioHint(false);
+            }
+          }}>
+            Tap to enable audio
+          </div>
+        )}
         <div className={`status-indicator ${connected ? 'connected' : ''}`}>
           <span className="status-dot" />
           <span className="status-text">{connected ? 'Connected' : 'Ready'}</span>
