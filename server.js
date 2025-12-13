@@ -51,29 +51,42 @@ async function createOpenAIRealtimeEphemeralToken() {
   const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
   const voice = process.env.OPENAI_VOICE || 'fable';
 
-  const resp = await fetch('https://api.openai.com/v1/realtime/sessions', {
+  // Mint an ephemeral client secret on the server using a standard API key.
+  // The browser uses the ephemeral key to connect directly to Realtime via WebRTC.
+  const sessionConfig = {
+    session: {
+      type: 'realtime',
+      model,
+      audio: {
+        output: {
+          voice,
+        },
+      },
+    },
+  };
+
+  const resp = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${openaiApiKey}`,
       'Content-Type': 'application/json',
-      'OpenAI-Beta': 'realtime=v1',
     },
-    body: JSON.stringify({
-      model,
-      voice,
-    }),
+    body: JSON.stringify(sessionConfig),
   });
 
   const data = await resp.json().catch(() => null);
 
   if (!resp.ok) {
-    const err = new Error('OpenAI error when creating realtime session');
+    const err = new Error('OpenAI error when creating realtime client secret');
     err.details = data || { status: resp.status, statusText: resp.statusText };
     throw err;
   }
 
-  const token = data?.client_secret?.value;
-  const expires_at = data?.client_secret?.expires_at;
+  // Support multiple possible response shapes.
+  // Typically: { client_secret: { value, expires_at }, session: {...} }
+  // Sometimes: { value, expires_at, session: {...} }
+  const token = data?.client_secret?.value ?? data?.value;
+  const expires_at = data?.client_secret?.expires_at ?? data?.expires_at;
 
   if (!token) {
     const err = new Error('Invalid OpenAI response: missing client_secret token');

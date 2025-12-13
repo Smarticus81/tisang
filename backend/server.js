@@ -31,21 +31,24 @@ app.use(cors());
 app.use(express.json());
 
 // Common session config used for creating ephemeral tokens
-const SESSION_CONFIG = {
-  session: {
-    type: 'realtime',
-    model: 'gpt-realtime',
-    audio: {
-      output: { voice: 'fable' }
-    }
-  }
-};
-
 async function createEphemeralToken() {
   const openaiApiKey = process.env.OPENAI_API_KEY;
   if (!openaiApiKey) {
     throw new Error('OpenAI API key not configured. Set OPENAI_API_KEY in .env');
   }
+
+  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
+  const voice = process.env.OPENAI_VOICE || 'fable';
+
+  const SESSION_CONFIG = {
+    session: {
+      type: 'realtime',
+      model,
+      audio: {
+        output: { voice },
+      },
+    },
+  };
 
   const resp = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
@@ -81,6 +84,8 @@ async function createEphemeralToken() {
   return {
     token,
     expires_at,
+    model,
+    voice,
     raw: data
   };
 }
