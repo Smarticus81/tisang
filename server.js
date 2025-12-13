@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch';
 import GmailService from './backend/gmail-service.js';
 import SearchService from './backend/search-service.js';
 import UtilityService from './backend/utility-service.js';
@@ -38,6 +39,73 @@ gmailService.initialize().then(available => {
 // Enable CORS for all routes
 app.use(cors());
 app.use(express.json());
+
+async function createOpenAIRealtimeEphemeralToken() {
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
+    const err = new Error('OPENAI_API_KEY not configured');
+    err.code = 'OPENAI_API_KEY_MISSING';
+    throw err;
+  }
+
+  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
+  const voice = process.env.OPENAI_VOICE || 'fable';
+
+  const resp = await fetch('https://api.openai.com/v1/realtime/sessions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openaiApiKey}`,
+      'Content-Type': 'application/json',
+      'OpenAI-Beta': 'realtime=v1',
+    },
+    body: JSON.stringify({
+      model,
+      voice,
+    }),
+  });
+
+  const data = await resp.json().catch(() => null);
+
+  if (!resp.ok) {
+    const err = new Error('OpenAI error when creating realtime session');
+    err.details = data || { status: resp.status, statusText: resp.statusText };
+    throw err;
+  }
+
+  const token = data?.client_secret?.value;
+  const expires_at = data?.client_secret?.expires_at;
+
+  if (!token) {
+    const err = new Error('Invalid OpenAI response: missing client_secret token');
+    err.details = data;
+    throw err;
+  }
+
+  return { token, expires_at, model, voice };
+}
+
+// OpenAI Realtime ephemeral token endpoint (used by the browser for WebRTC auth)
+app.options('/api/token', (_req, res) => res.status(204).end());
+app.get('/api/token', async (_req, res) => {
+  try {
+    const result = await createOpenAIRealtimeEphemeralToken();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (err) {
+    console.error('Failed to create OpenAI realtime token:', err);
+    res.status(500).json({ error: err.message, details: err.details || null, code: err.code || null });
+  }
+});
+app.post('/api/token', async (_req, res) => {
+  try {
+    const result = await createOpenAIRealtimeEphemeralToken();
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(result);
+  } catch (err) {
+    console.error('Failed to create OpenAI realtime token:', err);
+    res.status(500).json({ error: err.message, details: err.details || null, code: err.code || null });
+  }
+});
 
 // Gmail API routes - PWA compatible OAuth
 app.get('/api/gmail/auth-url', async (req, res) => {
