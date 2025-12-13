@@ -25,9 +25,9 @@ let gmailAvailable = false;
 gmailService.initialize().then(available => {
   gmailAvailable = available;
   if (available) {
-    console.log('✅ Gmail service initialized');
+    console.log('Gmail service initialized');
   } else {
-    console.log('⚠️ Gmail service not available (missing credentials or token)');
+    console.log('Gmail service not available (missing credentials or token)');
   }
 });
 
@@ -35,15 +35,14 @@ gmailService.initialize().then(available => {
 app.use(cors());
 app.use(express.json());
 
-// Gmail API routes
+// Gmail API routes - PWA compatible OAuth
 app.get('/api/gmail/auth-url', async (req, res) => {
   try {
     if (!gmailAvailable) {
-      // Try to reinitialize Gmail service
       const available = await gmailService.initialize();
       if (!available) {
         return res.status(503).json({
-          error: 'Gmail service not available. Please ensure gmail-credentials.json is in the backend folder.',
+          error: 'Gmail service not available. Please ensure gmail-credentials.json is configured.',
           setup_url: '/gmail-setup'
         });
       }
@@ -56,16 +55,40 @@ app.get('/api/gmail/auth-url', async (req, res) => {
   }
 });
 
+// OAuth redirect handler - PWA compatible
 app.get('/api/gmail/auth-redirect', async (req, res) => {
   try {
     const { code } = req.query;
     if (!code) {
       return res.status(400).send(`
         <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+              body { 
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+                background: #0a0a0f; 
+                color: #fff; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                min-height: 100vh; 
+                margin: 0;
+                padding: 20px;
+                text-align: center;
+              }
+              .container { max-width: 300px; }
+              h2 { font-weight: 400; color: #fca5a5; margin-bottom: 16px; }
+              p { color: rgba(255,255,255,0.6); font-size: 14px; }
+              a { color: #7dd3fc; }
+            </style>
+          </head>
           <body>
-            <h2>Gmail Authentication Failed</h2>
-            <p>No authorization code received.</p>
-            <p><a href="/">Return to Ti-Sang</a></p>
+            <div class="container">
+              <h2>Authentication Failed</h2>
+              <p>No authorization code received.</p>
+              <p><a href="/">Return to Maylah</a></p>
+            </div>
           </body>
         </html>
       `);
@@ -74,49 +97,80 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
     await gmailService.setAuthCode(code);
     gmailAvailable = true;
 
+    // PWA-compatible redirect page
     res.send(`
       <html>
         <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
           <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-            .success { color: #CC5500; }
-            .button {
-              background-color: #CC5500;
-              color: white;
-              padding: 10px 20px;
-              text-decoration: none;
-              border-radius: 5px;
-              display: inline-block;
-              margin-top: 20px;
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+              background: #0a0a0f; 
+              color: #fff; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              min-height: 100vh; 
+              margin: 0;
+              padding: 20px;
+              text-align: center;
+            }
+            .container { max-width: 300px; }
+            h2 { font-weight: 400; color: #6ee7b7; margin-bottom: 16px; }
+            p { color: rgba(255,255,255,0.6); font-size: 14px; margin: 8px 0; }
+            .spinner {
+              width: 24px;
+              height: 24px;
+              border: 2px solid rgba(125, 211, 252, 0.3);
+              border-top-color: #7dd3fc;
+              border-radius: 50%;
+              animation: spin 1s linear infinite;
+              margin: 20px auto;
+            }
+            @keyframes spin {
+              to { transform: rotate(360deg); }
             }
           </style>
         </head>
         <body>
-          <h2 class="success">✅ Gmail Authentication Successful!</h2>
-          <p>Ti-Sang can now access your Gmail.</p>
-          <p id="redirect-msg">Closing window...</p>
-          <p>Gmail is now connected!</p>
+          <div class="container">
+            <h2>Google Connected</h2>
+            <p id="status">Closing window...</p>
+            <div class="spinner" id="spinner"></div>
+          </div>
           <script>
-            // Check if we're in a popup or standalone mode
-            const isPopup = window.opener && !window.opener.closed;
+            (function() {
+              const isPopup = window.opener && !window.opener.closed;
+              const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                window.navigator.standalone === true;
 
-            if (isPopup) {
-              // We're in a popup, auto-close immediately
-              document.getElementById('redirect-msg').textContent = 'Closing window...';
-              setTimeout(() => {
-                window.close();
-                // If window.close() doesn't work, show fallback message
+              if (isPopup) {
+                // We're in a popup - try to close
+                document.getElementById('status').textContent = 'Closing window...';
                 setTimeout(() => {
-                  document.getElementById('redirect-msg').textContent = 'You can close this window now.';
+                  try {
+                    window.close();
+                  } catch(e) {}
+                  // Fallback if close doesn't work
+                  setTimeout(() => {
+                    document.getElementById('status').textContent = 'You can close this window now.';
+                    document.getElementById('spinner').style.display = 'none';
+                  }, 500);
                 }, 500);
-              }, 500);
-            } else {
-              // We're in standalone PWA mode, redirect back to app
-              document.getElementById('redirect-msg').textContent = 'Redirecting back to app...';
-              setTimeout(() => {
-                window.location.href = '/';
-              }, 1000);
-            }
+              } else if (isStandalone) {
+                // PWA standalone mode - redirect back to app
+                document.getElementById('status').textContent = 'Returning to Maylah...';
+                setTimeout(() => {
+                  window.location.href = '/?auth_success=true';
+                }, 800);
+              } else {
+                // Regular browser - redirect
+                document.getElementById('status').textContent = 'Returning to Maylah...';
+                setTimeout(() => {
+                  window.location.href = '/?auth_success=true';
+                }, 800);
+              }
+            })();
           </script>
         </body>
       </html>
@@ -124,10 +178,33 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
   } catch (error) {
     res.status(500).send(`
       <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+              background: #0a0a0f; 
+              color: #fff; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              min-height: 100vh; 
+              margin: 0;
+              padding: 20px;
+              text-align: center;
+            }
+            .container { max-width: 300px; }
+            h2 { font-weight: 400; color: #fca5a5; margin-bottom: 16px; }
+            p { color: rgba(255,255,255,0.6); font-size: 14px; }
+            a { color: #7dd3fc; }
+          </style>
+        </head>
         <body>
-          <h2>Gmail Authentication Error</h2>
-          <p>Error: ${error.message}</p>
-          <p><a href="/">Return to Ti-Sang</a></p>
+          <div class="container">
+            <h2>Authentication Error</h2>
+            <p>${error.message}</p>
+            <p><a href="/">Return to Maylah</a></p>
+          </div>
         </body>
       </html>
     `);
@@ -235,7 +312,7 @@ app.post('/api/gmail/summarize', async (req, res) => {
     const { maxResults = 10 } = req.body;
     const emails = await gmailService.getRecentEmails(maxResults);
     const summary = await gmailService.summarizeEmails(emails);
-    res.json({ summary, emails: emails.slice(0, 5) }); // Include top 5 emails in summary
+    res.json({ summary, emails: emails.slice(0, 5) });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -458,104 +535,118 @@ app.get('/gmail-setup', (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Ti-Sang Gmail Setup</title>
+        <title>Maylah - Google Setup</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body { 
-            font-family: Arial, sans-serif; 
-            max-width: 800px; 
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif; 
+            max-width: 700px; 
             margin: 0 auto; 
             padding: 20px; 
             line-height: 1.6;
+            background: #0a0a0f;
+            color: rgba(255,255,255,0.9);
           }
-          .header { color: #CC5500; text-align: center; }
+          .header { color: #7dd3fc; text-align: center; font-weight: 400; }
           .step { 
-            background: #f5f5f5; 
-            padding: 15px; 
-            margin: 10px 0; 
-            border-radius: 8px; 
-            border-left: 4px solid #CC5500;
+            background: rgba(255,255,255,0.03); 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 12px; 
+            border-left: 3px solid #7dd3fc;
           }
+          .step h3 { color: #7dd3fc; font-weight: 500; margin-top: 0; }
           .code { 
-            background: #e8e8e8; 
-            padding: 2px 6px; 
-            border-radius: 3px; 
+            background: rgba(255,255,255,0.08); 
+            padding: 4px 8px; 
+            border-radius: 4px; 
             font-family: monospace;
+            font-size: 13px;
           }
           .button { 
-            background-color: #CC5500; 
-            color: white; 
-            padding: 10px 20px; 
+            background: rgba(125, 211, 252, 0.15); 
+            color: #7dd3fc;
+            border: 1px solid rgba(125, 211, 252, 0.3);
+            padding: 12px 24px; 
             text-decoration: none; 
-            border-radius: 5px; 
+            border-radius: 8px; 
             display: inline-block;
             margin: 10px 5px;
+            font-size: 14px;
           }
+          .button:hover { background: rgba(125, 211, 252, 0.25); }
+          a { color: #7dd3fc; }
+          ul, ol { color: rgba(255,255,255,0.7); }
+          li { margin: 8px 0; }
         </style>
       </head>
       <body>
-        <h1 class="header">🔧 Ti-Sang Gmail Setup</h1>
+        <h1 class="header">Maylah - Google Setup</h1>
         
-        <p>To enable Gmail features in Ti-Sang, you need to set up Google API credentials:</p>
+        <p style="text-align: center; color: rgba(255,255,255,0.6);">
+          Connect your Google account to enable Gmail and Calendar features.
+        </p>
         
         <div class="step">
           <h3>Step 1: Create Google Cloud Project</h3>
           <ol>
             <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
             <li>Create a new project or select an existing one</li>
-            <li>Enable the Gmail API:
+            <li>Enable the Gmail API and Calendar API:
               <ul>
                 <li>Go to "APIs & Services" > "Library"</li>
-                <li>Search for "Gmail API"</li>
-                <li>Click "Enable"</li>
+                <li>Search and enable "Gmail API"</li>
+                <li>Search and enable "Google Calendar API"</li>
               </ul>
             </li>
           </ol>
         </div>
 
         <div class="step">
-          <h3>Step 2: Create OAuth 2.0 Credentials</h3>
+          <h3>Step 2: Create OAuth Credentials</h3>
           <ol>
             <li>Go to "APIs & Services" > "Credentials"</li>
             <li>Click "Create Credentials" > "OAuth 2.0 Client IDs"</li>
             <li>Configure OAuth consent screen if prompted:
               <ul>
-                <li>User Type: External (for personal use)</li>
-                <li>App name: "Ti-Sang Voice Assistant"</li>
-                <li>User support email: your email</li>
+                <li>User Type: External</li>
+                <li>App name: "Maylah"</li>
+                <li>Add your email as a test user</li>
               </ul>
             </li>
             <li>Create OAuth 2.0 Client ID:
               <ul>
                 <li>Application type: "Web application"</li>
-                <li>Name: "Ti-Sang Gmail Client"</li>
-                <li>Authorized redirect URIs: <span class="code">https://tisang-production.up.railway.app/api/gmail/auth-redirect</span></li>
+                <li>Name: "Maylah"</li>
+                <li>Authorized redirect URIs: <span class="code">https://your-domain.com/api/gmail/auth-redirect</span></li>
               </ul>
             </li>
-            <li>Download the JSON file</li>
+            <li>Download the JSON credentials file</li>
           </ol>
         </div>
 
         <div class="step">
-          <h3>Step 3: Setup Credentials</h3>
+          <h3>Step 3: Configure Credentials</h3>
           <ol>
             <li>Rename the downloaded file to <span class="code">gmail-credentials.json</span></li>
-            <li>Contact the developer to add these credentials to the server</li>
-            <li>The file should contain your client ID and secret</li>
+            <li>Place it in the <span class="code">backend/</span> folder</li>
+            <li>Or set the <span class="code">GMAIL_CREDENTIALS_JSON</span> environment variable with the JSON contents</li>
           </ol>
         </div>
 
         <div class="step">
-          <h3>Step 4: Authentication</h3>
-          <p>Once credentials are set up, you can authenticate by saying:</p>
+          <h3>Step 4: Authenticate</h3>
+          <p>Once credentials are configured, open Maylah and:</p>
           <ul>
-            <li><strong>"Set up Gmail"</strong> - Ti-Sang will open the authentication window</li>
-            <li><strong>"Connect my Gmail"</strong> - Alternative command</li>
+            <li>Tap the settings icon</li>
+            <li>Tap "Connect" next to Google Account</li>
+            <li>Or say "Connect my Google account"</li>
           </ul>
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <a href="/" class="button">← Back to Ti-Sang</a>
-          <a href="https://console.cloud.google.com/" target="_blank" class="button">Google Cloud Console →</a>
+          <a href="/" class="button">Back to Maylah</a>
+          <a href="https://console.cloud.google.com/" target="_blank" class="button">Google Cloud Console</a>
         </div>
       </body>
     </html>
@@ -571,11 +662,6 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// API route for token generation
-// Gemini Service Initialization (requires server instance)
-// We'll initialize it after the server starts listening
-
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'healthy', timestamp: new Date().toISOString() });
@@ -590,7 +676,6 @@ app.get('*', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`Ti-Sang server running on port ${PORT}`);
-  // Initialize Gemini Service with the HTTP server instance for WebSocket support
+  console.log(`Maylah server running on port ${PORT}`);
   geminiService.initialize(server);
 });

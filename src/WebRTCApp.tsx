@@ -68,23 +68,191 @@ const similarity = (a: string, b: string) => {
   return 1 - dist / maxLen;
 };
 
-const WAKE_WORDS = ['tisang', 'ti-sang', 'ti sang', 'hey tisang', 'hey ti-sang'];
+const WAKE_WORDS = ['maylah', 'may-lah', 'may lah', 'hey maylah', 'hey may-lah', 'mayla', 'maila'];
 const wakeThreshold = 0.6;
 const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
-const WAKE_GREETING = `Hi there! I'm ti-sang. How can I help?`;
 
-const ReactiveCore: React.FC<{
+// Liquid Glass Orb Component
+const LiquidOrb: React.FC<{
   state: 'idle' | 'listening' | 'thinking' | 'speaking';
-  volume?: number;
-}> = ({ state, volume = 0 }) => {
+  audioLevel?: number;
+}> = ({ state, audioLevel = 0 }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number | undefined>(undefined);
+  const timeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const size = 280;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    ctx.scale(dpr, dpr);
+
+    const centerX = size / 2;
+    const centerY = size / 2;
+    const baseRadius = 80;
+
+    const animate = () => {
+      timeRef.current += 0.016;
+      const t = timeRef.current;
+
+      ctx.clearRect(0, 0, size, size);
+
+      // Dynamic parameters based on state
+      let waveIntensity = 0.08;
+      let waveSpeed = 0.8;
+      let glowIntensity = 0.3;
+      let primaryHue = 200;
+      let secondaryHue = 260;
+
+      switch (state) {
+        case 'listening':
+          waveIntensity = 0.12 + audioLevel * 0.15;
+          waveSpeed = 1.2;
+          glowIntensity = 0.5 + audioLevel * 0.3;
+          primaryHue = 180;
+          secondaryHue = 220;
+          break;
+        case 'thinking':
+          waveIntensity = 0.1;
+          waveSpeed = 2;
+          glowIntensity = 0.4;
+          primaryHue = 260;
+          secondaryHue = 300;
+          break;
+        case 'speaking':
+          waveIntensity = 0.15 + audioLevel * 0.25;
+          waveSpeed = 1.5;
+          glowIntensity = 0.6 + audioLevel * 0.4;
+          primaryHue = 170;
+          secondaryHue = 200;
+          break;
+      }
+
+      // Outer glow layers
+      for (let i = 4; i >= 0; i--) {
+        const glowRadius = baseRadius + 30 + i * 15;
+        const alpha = (glowIntensity * 0.08) * (1 - i * 0.15);
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
+        gradient.addColorStop(0, `hsla(${primaryHue}, 60%, 70%, ${alpha})`);
+        gradient.addColorStop(0.5, `hsla(${secondaryHue}, 50%, 60%, ${alpha * 0.5})`);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      // Main orb with liquid morphing
+      ctx.save();
+      ctx.beginPath();
+
+      const points = 120;
+      for (let i = 0; i <= points; i++) {
+        const angle = (i / points) * Math.PI * 2;
+        
+        // Multiple wave layers for liquid effect
+        const wave1 = Math.sin(angle * 3 + t * waveSpeed) * baseRadius * waveIntensity;
+        const wave2 = Math.sin(angle * 5 - t * waveSpeed * 1.3) * baseRadius * waveIntensity * 0.5;
+        const wave3 = Math.sin(angle * 7 + t * waveSpeed * 0.7) * baseRadius * waveIntensity * 0.3;
+        const wave4 = Math.cos(angle * 2 + t * waveSpeed * 1.1) * baseRadius * waveIntensity * 0.4;
+        
+        const radius = baseRadius + wave1 + wave2 + wave3 + wave4;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      ctx.closePath();
+
+      // Glass gradient fill
+      const glassGradient = ctx.createRadialGradient(
+        centerX - 20, centerY - 30, 0,
+        centerX, centerY, baseRadius + 20
+      );
+      glassGradient.addColorStop(0, `hsla(${primaryHue}, 30%, 95%, 0.9)`);
+      glassGradient.addColorStop(0.3, `hsla(${primaryHue}, 40%, 80%, 0.6)`);
+      glassGradient.addColorStop(0.6, `hsla(${secondaryHue}, 50%, 60%, 0.4)`);
+      glassGradient.addColorStop(1, `hsla(${secondaryHue}, 60%, 40%, 0.2)`);
+      ctx.fillStyle = glassGradient;
+      ctx.fill();
+
+      // Glass border
+      ctx.strokeStyle = `hsla(${primaryHue}, 50%, 80%, 0.3)`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      // Inner highlight
+      ctx.save();
+      ctx.beginPath();
+      const highlightRadius = baseRadius * 0.6;
+      const highlightGradient = ctx.createRadialGradient(
+        centerX - 15, centerY - 25, 0,
+        centerX - 10, centerY - 15, highlightRadius
+      );
+      highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+      highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+      highlightGradient.addColorStop(1, 'transparent');
+      ctx.fillStyle = highlightGradient;
+      ctx.arc(centerX - 15, centerY - 20, highlightRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Soundwave rings when speaking or listening
+      if (state === 'speaking' || state === 'listening') {
+        const numRings = 3;
+        for (let i = 0; i < numRings; i++) {
+          const ringProgress = ((t * 0.5 + i * 0.33) % 1);
+          const ringRadius = baseRadius + ringProgress * 60;
+          const ringAlpha = (1 - ringProgress) * 0.3 * (state === 'speaking' ? audioLevel + 0.3 : 0.5);
+          
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
+          ctx.strokeStyle = `hsla(${primaryHue}, 60%, 70%, ${ringAlpha})`;
+          ctx.lineWidth = 2 - ringProgress * 1.5;
+          ctx.stroke();
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [state, audioLevel]);
+
   return (
-    <div className="core-container">
-      <div className={`core-orb ${state}`} style={{
-        transform: state === 'speaking' ? `scale(${1 + Math.min(volume, 0.5)})` : undefined
-      }} />
-      <div className="core-ring ring-1" />
-      <div className="core-ring ring-2" />
-      <div className="core-ring ring-3" />
+    <div className="orb-container">
+      <canvas ref={canvasRef} className="liquid-orb" />
+    </div>
+  );
+};
+
+// Smooth transcript display
+const TranscriptDisplay: React.FC<{
+  text: string;
+  type: 'user' | 'agent' | 'system';
+  isInterim?: boolean;
+}> = ({ text, type, isInterim }) => {
+  return (
+    <div className={`transcript ${type} ${isInterim ? 'interim' : ''}`}>
+      <span className="transcript-text">{text}</span>
     </div>
   );
 };
@@ -95,10 +263,13 @@ const WebRTCApp: React.FC = () => {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [mouthScale, setMouthScale] = useState(1);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
 
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
-  const [gmailStatus, setGmailStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
+  const [googleStatus, setGoogleStatus] = useState<'unknown' | 'available' | 'unavailable'>('unknown');
+  const [showSettings, setShowSettings] = useState(false);
 
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
@@ -108,10 +279,13 @@ const WebRTCApp: React.FC = () => {
   const audioQueueRef = useRef<Float32Array[]>([]);
   const isPlayingRef = useRef(false);
   const nextPlayTimeRef = useRef(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioLevelIntervalRef = useRef<number | null>(null);
 
   const recognizerRef = useRef<SpeechRecognition | null>(null);
   const wakeRunningRef = useRef<boolean>(false);
   const shouldGreetOnConnectRef = useRef<boolean>(false);
+  const transcriptRecognizerRef = useRef<SpeechRecognition | null>(null);
 
   // Initialize Audio Context
   useEffect(() => {
@@ -121,44 +295,76 @@ const WebRTCApp: React.FC = () => {
     };
   }, []);
 
-  // Check Gmail Status
-  const checkGmailStatus = useCallback(async () => {
+  // Check Google Status and handle OAuth callback
+  const checkGoogleStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/status');
       if (response.ok) {
         const data = await response.json();
-        setGmailStatus(data.gmail ? 'available' : 'unavailable');
+        setGoogleStatus(data.gmail ? 'available' : 'unavailable');
       }
     } catch {
-      setGmailStatus('unknown');
+      setGoogleStatus('unknown');
     }
   }, []);
 
   useEffect(() => {
-    checkGmailStatus();
-  }, [checkGmailStatus]);
+    checkGoogleStatus();
 
-  const triggerGmailSetup = () => {
-    const width = 500;
-    const height = 600;
-    const left = (window.screen.width - width) / 2;
-    const top = (window.screen.height - height) / 2;
+    // Handle OAuth callback for PWA
+    const urlParams = new URLSearchParams(window.location.search);
+    const authSuccess = urlParams.get('auth_success');
+    if (authSuccess === 'true') {
+      setGoogleStatus('available');
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [checkGoogleStatus]);
 
-    window.open(
-      '/api/gmail/auth-url',
-      'GmailAuth',
-      `width=${width},height=${height},top=${top},left=${left}`
-    );
-
-    const checkInterval = setInterval(async () => {
-      await checkGmailStatus();
-      if (gmailStatus === 'available') {
-        clearInterval(checkInterval);
+  // PWA-compatible OAuth trigger
+  const triggerGoogleAuth = useCallback(async () => {
+    try {
+      const response = await fetch('/api/gmail/auth-url');
+      const data = await response.json();
+      
+      if (data.authUrl) {
+        // Check if running as PWA standalone
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+          (window.navigator as any).standalone === true ||
+          document.referrer.includes('android-app://');
+        
+        if (isStandalone) {
+          // For PWA: redirect in same window, will redirect back after auth
+          window.location.href = data.authUrl;
+        } else {
+          // For browser: use popup
+          const width = 500;
+          const height = 600;
+          const left = (window.screen.width - width) / 2;
+          const top = (window.screen.height - height) / 2;
+          
+          const popup = window.open(
+            data.authUrl,
+            'GoogleAuth',
+            `width=${width},height=${height},top=${top},left=${left}`
+          );
+          
+          // Poll for popup close
+          const checkPopup = setInterval(async () => {
+            if (popup?.closed) {
+              clearInterval(checkPopup);
+              await checkGoogleStatus();
+            }
+          }, 1000);
+          
+          setTimeout(() => clearInterval(checkPopup), 120000);
+        }
       }
-    }, 2000);
-
-    setTimeout(() => clearInterval(checkInterval), 60000);
-  };
+    } catch (err) {
+      console.error('Failed to start auth:', err);
+      setError('Failed to start authentication');
+    }
+  }, [checkGoogleStatus]);
 
   // Audio Playback Logic
   const playNextAudioChunk = useCallback(() => {
@@ -183,14 +389,20 @@ const WebRTCApp: React.FC = () => {
     source.start(startTime);
     nextPlayTimeRef.current = startTime + buffer.duration;
 
+    // Calculate audio level for visualization
+    let sum = 0;
+    for (let i = 0; i < audioData.length; i++) sum += Math.abs(audioData[i]);
+    const avg = sum / audioData.length;
+    setAudioLevel(Math.min(avg * 8, 1));
+
     source.onended = () => {
       if (audioQueueRef.current.length === 0) {
         isPlayingRef.current = false;
         setSpeaking(false);
+        setAudioLevel(0);
       }
     };
 
-    // Schedule next chunk
     if (audioQueueRef.current.length > 0) {
       setTimeout(playNextAudioChunk, (buffer.duration * 1000) / 2);
     }
@@ -215,26 +427,101 @@ const WebRTCApp: React.FC = () => {
       if (!isPlayingRef.current) {
         playNextAudioChunk();
       }
-
-      // Visualize volume
-      let sum = 0;
-      for (let i = 0; i < bytes.length; i++) sum += Math.abs(bytes[i]);
-      const avg = sum / bytes.length;
-      setMouthScale(1 + avg * 5);
-
     } catch (e) {
       console.error('Error processing audio message:', e);
     }
   }, [playNextAudioChunk]);
 
+  // Start transcript recognition for smooth display
+  const startTranscriptRecognition = useCallback(() => {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) return;
+
+    try {
+      const recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let interim = '';
+        let final = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          if (result.isFinal) {
+            final += result[0].transcript;
+          } else {
+            interim += result[0].transcript;
+          }
+        }
+
+        if (final) {
+          setTranscript(final);
+          setInterimTranscript('');
+        } else {
+          setInterimTranscript(interim);
+        }
+      };
+
+      recognition.onend = () => {
+        if (listening) {
+          try {
+            recognition.start();
+          } catch (e) {
+            // Ignore restart errors
+          }
+        }
+      };
+
+      recognition.start();
+      transcriptRecognizerRef.current = recognition;
+    } catch (e) {
+      console.error('Failed to start transcript recognition:', e);
+    }
+  }, [listening]);
+
+  const stopTranscriptRecognition = useCallback(() => {
+    if (transcriptRecognizerRef.current) {
+      transcriptRecognizerRef.current.stop();
+      transcriptRecognizerRef.current = null;
+    }
+    setTranscript('');
+    setInterimTranscript('');
+  }, []);
+
   const startAudioCapture = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 } });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: { 
+          sampleRate: 16000, 
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true
+        } 
+      });
       mediaStreamRef.current = stream;
 
       if (!audioContextRef.current) return;
 
       const source = audioContextRef.current.createMediaStreamSource(stream);
+      
+      // Create analyser for input level visualization
+      const analyser = audioContextRef.current.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      // Monitor input audio level
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      audioLevelIntervalRef.current = window.setInterval(() => {
+        if (analyserRef.current && listening && !speaking) {
+          analyserRef.current.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+          setAudioLevel(Math.min(avg / 128, 1));
+        }
+      }, 50);
+
       const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
 
       processor.onaudioprocess = (e) => {
@@ -276,6 +563,12 @@ const WebRTCApp: React.FC = () => {
       processorRef.current.disconnect();
       processorRef.current = null;
     }
+    if (audioLevelIntervalRef.current) {
+      clearInterval(audioLevelIntervalRef.current);
+      audioLevelIntervalRef.current = null;
+    }
+    analyserRef.current = null;
+    setAudioLevel(0);
   };
 
   // Connect to Gemini
@@ -290,22 +583,24 @@ const WebRTCApp: React.FC = () => {
       const ws = new WebSocket(`${protocol}//${host}/api/gemini/stream`);
 
       ws.onopen = () => {
-        console.log('Connected to Gemini Backend');
+        console.log('Connected to Maylah Backend');
         setConnected(true);
         setLoading(false);
         setListening(true);
         wsRef.current = ws;
         startAudioCapture();
+        startTranscriptRecognition();
 
-        // Send session update with tools
+        // Send session update with tools and personality
         const sessionUpdate = {
           type: "session.update",
           session: {
+            instructions: `You are Maylah, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.`,
             tools: [
               {
                 type: "function",
-                name: "gmail_setup",
-                description: "Initiates the Gmail authentication process when the user asks to connect or set up Gmail.",
+                name: "google_auth_setup",
+                description: "Initiates Google authentication for Gmail and Calendar access when the user asks to connect or set up their Google account, Gmail, or Calendar.",
                 parameters: { type: "object", properties: {} }
               },
               {
@@ -341,17 +636,169 @@ const WebRTCApp: React.FC = () => {
               },
               {
                 type: "function",
-                name: "advanced_web_search",
-                description: "Advanced web search with filters and options",
+                name: "get_emails",
+                description: "Retrieves recent emails from the user's Gmail inbox.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    maxResults: { type: "number", description: "Maximum number of emails to return (default 5)" }
+                  }
+                }
+              },
+              {
+                type: "function",
+                name: "search_emails",
+                description: "Searches emails in Gmail with a query.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Search query (e.g., 'from:john subject:meeting')" },
+                    maxResults: { type: "number", description: "Maximum results (default 5)" }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "send_email",
+                description: "Sends an email via Gmail.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    to: { type: "string", description: "Recipient email address" },
+                    subject: { type: "string", description: "Email subject" },
+                    text: { type: "string", description: "Email body text" },
+                    cc: { type: "string", description: "CC recipients (optional)" },
+                    bcc: { type: "string", description: "BCC recipients (optional)" }
+                  },
+                  required: ["to", "subject", "text"]
+                }
+              },
+              {
+                type: "function",
+                name: "web_search",
+                description: "Searches the web for information.",
                 parameters: {
                   type: "object",
                   properties: {
                     query: { type: "string", description: "Search query" },
-                    timeRange: { type: "string", description: "Time filter: day, week, month, year (optional)" },
-                    site: { type: "string", description: "Specific site to search (e.g., 'reddit.com') (optional)" },
-                    maxResults: { type: "number", description: "Maximum results (default: 5)" }
+                    maxResults: { type: "number", description: "Maximum results (default 5)" }
                   },
                   required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_weather",
+                description: "Gets current weather for a location.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    location: { type: "string", description: "City name or location" },
+                    units: { type: "string", description: "Units: 'fahrenheit' or 'celsius'" }
+                  },
+                  required: ["location"]
+                }
+              },
+              {
+                type: "function",
+                name: "calculate",
+                description: "Performs mathematical calculations.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    expression: { type: "string", description: "Mathematical expression to evaluate" }
+                  },
+                  required: ["expression"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_stock_price",
+                description: "Gets current stock price and change.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string", description: "Stock ticker symbol (e.g., AAPL, GOOGL)" }
+                  },
+                  required: ["symbol"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_crypto_price",
+                description: "Gets current cryptocurrency price.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    symbol: { type: "string", description: "Crypto symbol (e.g., bitcoin, ethereum)" },
+                    currency: { type: "string", description: "Currency to display price in (default USD)" }
+                  },
+                  required: ["symbol"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_definition",
+                description: "Gets the dictionary definition of a word.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    word: { type: "string", description: "Word to define" }
+                  },
+                  required: ["word"]
+                }
+              },
+              {
+                type: "function",
+                name: "wikipedia_search",
+                description: "Searches Wikipedia for information on a topic.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    query: { type: "string", description: "Topic to search" }
+                  },
+                  required: ["query"]
+                }
+              },
+              {
+                type: "function",
+                name: "convert_units",
+                description: "Converts between units of measurement.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    value: { type: "number", description: "Value to convert" },
+                    from: { type: "string", description: "Source unit (e.g., 'km', 'miles', 'kg', 'lbs')" },
+                    to: { type: "string", description: "Target unit" }
+                  },
+                  required: ["value", "from", "to"]
+                }
+              },
+              {
+                type: "function",
+                name: "get_time",
+                description: "Gets current time in a specific timezone.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    timezone: { type: "string", description: "Timezone (e.g., 'America/New_York', 'Europe/London')" }
+                  },
+                  required: ["timezone"]
+                }
+              },
+              {
+                type: "function",
+                name: "set_reminder",
+                description: "Creates a reminder as a calendar event.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string", description: "Reminder title" },
+                    dateTime: { type: "string", description: "When to remind (ISO 8601 format)" },
+                    priority: { type: "string", description: "Priority: low, medium, high" }
+                  },
+                  required: ["title", "dateTime"]
                 }
               }
             ]
@@ -361,13 +808,12 @@ const WebRTCApp: React.FC = () => {
 
         if (shouldGreetOnConnectRef.current) {
           shouldGreetOnConnectRef.current = false;
-          // Send greeting trigger
           ws.send(JSON.stringify({
             type: "conversation.item.create",
             item: {
               type: "message",
               role: "user",
-              content: [{ type: "input_text", text: WAKE_GREETING }]
+              content: [{ type: "input_text", text: "Hey Maylah" }]
             }
           }));
           ws.send(JSON.stringify({ type: "response.create" }));
@@ -381,6 +827,8 @@ const WebRTCApp: React.FC = () => {
             handleAudioMessage(data.data);
           } else if (data.type === 'error') {
             setError(data.message);
+          } else if (data.type === 'transcript') {
+            setTranscript(data.text);
           }
         } catch (e) {
           console.error('WebSocket message error:', e);
@@ -388,11 +836,12 @@ const WebRTCApp: React.FC = () => {
       };
 
       ws.onclose = () => {
-        console.log('Disconnected from Gemini Backend');
+        console.log('Disconnected from Maylah Backend');
         setConnected(false);
         setListening(false);
         setLoading(false);
         stopAudioCapture();
+        stopTranscriptRecognition();
         wsRef.current = null;
       };
 
@@ -407,7 +856,7 @@ const WebRTCApp: React.FC = () => {
       setError('Failed to connect');
       setLoading(false);
     }
-  }, [connected, loading, handleAudioMessage]);
+  }, [connected, loading, handleAudioMessage, startTranscriptRecognition, stopTranscriptRecognition]);
 
   const disconnectFromGemini = useCallback(() => {
     if (wsRef.current) {
@@ -415,9 +864,10 @@ const WebRTCApp: React.FC = () => {
       wsRef.current = null;
     }
     stopAudioCapture();
+    stopTranscriptRecognition();
     setConnected(false);
     setListening(false);
-  }, []);
+  }, [stopTranscriptRecognition]);
 
   // Wake Word Logic
   const detectWakeWord = useCallback((transcript: string) => {
@@ -453,7 +903,6 @@ const WebRTCApp: React.FC = () => {
 
         if (isFinal || results[idx][0].confidence > 0.7) {
           if (detectWakeWord(transcript)) {
-            console.log('🎯 Wake word detected:', transcript);
             stopWakeRecognition();
             handleStartListening();
           }
@@ -463,7 +912,6 @@ const WebRTCApp: React.FC = () => {
       recognition.onend = () => {
         wakeRunningRef.current = false;
         recognizerRef.current = null;
-        // Auto-restart if it wasn't stopped intentionally
         if (wakeWordEnabled && !listening) {
           setTimeout(() => startWakeRecognition(), 1000);
         }
@@ -477,7 +925,6 @@ const WebRTCApp: React.FC = () => {
       recognition.start();
       recognizerRef.current = recognition;
       wakeRunningRef.current = true;
-      console.log('✅ Wake word recognition started');
     } catch (e) {
       console.error('Failed to start wake recognition:', e);
     }
@@ -489,7 +936,6 @@ const WebRTCApp: React.FC = () => {
       recognizerRef.current = null;
     }
     wakeRunningRef.current = false;
-    console.log('🛑 Wake word recognition stopped');
   }, []);
 
   const handleStartListening = () => {
@@ -504,98 +950,140 @@ const WebRTCApp: React.FC = () => {
     }
   };
 
-  // Determine Core State
-  let coreState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
-  if (loading) coreState = 'thinking';
-  else if (speaking) coreState = 'speaking';
-  else if (listening) coreState = 'listening';
+  // Determine state
+  let orbState: 'idle' | 'listening' | 'thinking' | 'speaking' = 'idle';
+  if (loading) orbState = 'thinking';
+  else if (speaking) orbState = 'speaking';
+  else if (listening) orbState = 'listening';
 
   return (
-    <>
-      <div className="deep-space-bg" />
-      <div className="star-field" />
+    <div className="maylah-container">
+      {/* Ambient background */}
+      <div className="ambient-bg" />
+      <div className="glass-overlay" />
 
-      <div className="app-container">
-        <div className="status-indicators">
-          <div className={`status-dot ${connected ? 'connected' : 'error'}`} title="Gemini Connection" />
-          <div className={`status-dot ${gmailStatus === 'available' ? 'connected' : 'error'}`} title="Gmail Connection" />
+      {/* Status indicator */}
+      <div className="status-bar">
+        <div className={`status-indicator ${connected ? 'connected' : ''}`}>
+          <span className="status-dot" />
+          <span className="status-text">{connected ? 'Connected' : 'Ready'}</span>
+        </div>
+        <button 
+          className="settings-btn"
+          onClick={() => setShowSettings(!showSettings)}
+          aria-label="Settings"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="settings-panel">
+          <div className="settings-content">
+            <h3>Settings</h3>
+            
+            <div className="setting-item">
+              <span>Wake Word Detection</span>
+              <button 
+                className={`toggle-btn ${wakeWordEnabled ? 'active' : ''}`}
+                onClick={() => {
+                  const next = !wakeWordEnabled;
+                  setWakeWordEnabled(next);
+                  if (next && !listening) startWakeRecognition();
+                  else stopWakeRecognition();
+                }}
+              >
+                {wakeWordEnabled ? 'On' : 'Off'}
+              </button>
+            </div>
+
+            <div className="setting-item">
+              <span>Google Account</span>
+              <button 
+                className={`toggle-btn ${googleStatus === 'available' ? 'active' : ''}`}
+                onClick={triggerGoogleAuth}
+              >
+                {googleStatus === 'available' ? 'Connected' : 'Connect'}
+              </button>
+            </div>
+
+            <button className="close-settings" onClick={() => setShowSettings(false)}>
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main className="main-content">
+        {/* Logo/Name */}
+        <div className="brand">
+          <h1 className="brand-name">maylah</h1>
         </div>
 
-        <ReactiveCore state={coreState} volume={mouthScale - 1} />
+        {/* Orb visualization */}
+        <LiquidOrb state={orbState} audioLevel={audioLevel} />
 
-        <div className="hud-transcript">
-          {error && <div style={{ color: '#ff4444' }}>{error}</div>}
-          {!error && (
-            <>
-              {listening ? (
-                <span className="user-text">Listening...</span>
-              ) : speaking ? (
-                <span className="agent-text">Speaking...</span>
-              ) : loading ? (
-                <span className="agent-text">Connecting to Gemini...</span>
-              ) : (
-                <span className="user-text">Say "Ti-Sang" or press Start</span>
-              )}
-            </>
+        {/* Transcript area */}
+        <div className="transcript-area">
+          {error ? (
+            <TranscriptDisplay text={error} type="system" />
+          ) : interimTranscript ? (
+            <TranscriptDisplay text={interimTranscript} type="user" isInterim />
+          ) : transcript ? (
+            <TranscriptDisplay text={transcript} type="user" />
+          ) : (
+            <TranscriptDisplay 
+              text={
+                listening 
+                  ? "I'm listening..." 
+                  : speaking 
+                    ? "" 
+                    : loading 
+                      ? "Connecting..." 
+                      : wakeWordEnabled 
+                        ? 'Say "Maylah" to start' 
+                        : "Tap to start"
+              } 
+              type="system" 
+            />
           )}
         </div>
+      </main>
 
-        <div className="hud-controls">
+      {/* Control bar */}
+      <div className="control-bar">
+        {!listening ? (
           <button
-            className={`hud-btn ${wakeWordEnabled ? 'active' : ''}`}
-            onClick={() => {
-              const next = !wakeWordEnabled;
-              setWakeWordEnabled(next);
-              if (next && !listening) startWakeRecognition();
-              else stopWakeRecognition();
-            }}
-            title="Toggle Wake Word"
+            className="main-btn"
+            onClick={handleStartListening}
+            disabled={loading}
+            aria-label="Start conversation"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
               <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
               <line x1="12" y1="19" x2="12" y2="23" />
               <line x1="8" y1="23" x2="16" y2="23" />
             </svg>
           </button>
-
-          {!listening ? (
-            <button
-              className="hud-btn"
-              onClick={handleStartListening}
-              disabled={loading}
-              title="Start Chat"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              className="hud-btn active"
-              onClick={handleStopListening}
-              title="Stop Chat"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="9" y="9" width="6" height="6" />
-                <circle cx="12" cy="12" r="10" />
-              </svg>
-            </button>
-          )}
-
+        ) : (
           <button
-            className={`hud-btn ${gmailStatus === 'available' ? 'active' : ''}`}
-            onClick={triggerGmailSetup}
-            title="Gmail Settings"
+            className="main-btn active"
+            onClick={handleStopListening}
+            aria-label="Stop conversation"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
+              <rect x="6" y="6" width="12" height="12" rx="2" />
             </svg>
           </button>
-        </div>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 
