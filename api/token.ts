@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'OpenAI-Beta': 'realtime=v1'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-realtime-preview-2024-12-17',
+        model: 'gpt-realtime',
         voice: 'alloy'
       })
     });
