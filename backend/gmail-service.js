@@ -30,6 +30,7 @@ class GmailService {
       // Prefer credentials from environment for cloud deployments
       let credentials = null;
       const credsFromEnv = process.env.GMAIL_CREDENTIALS_JSON;
+      console.log('[Gmail Debug] GMAIL_CREDENTIALS_JSON env var exists:', !!credsFromEnv);
       if (credsFromEnv) {
         try {
           credentials = JSON.parse(credsFromEnv);
@@ -47,17 +48,18 @@ class GmailService {
         credentials = JSON.parse(await fs.readFile(CREDENTIALS_PATH, 'utf8'));
       }
       const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
-      
+
       // Use our auth redirect endpoint - prefer env var for flexibility
       const redirectUri = process.env.OAUTH_REDIRECT_URI ||
-        (process.env.NODE_ENV === 'production' 
+        (process.env.NODE_ENV === 'production'
           ? 'https://maylah-production.up.railway.app/api/gmail/auth-redirect'
           : 'http://localhost:3000/api/gmail/auth-redirect');
-      
+
       this.auth = new google.auth.OAuth2(client_id, client_secret, redirectUri);
 
       // Check if we have a stored token (prefer env var for cloud)
       const tokenFromEnv = process.env.GMAIL_TOKEN_JSON;
+      console.log('[Gmail Debug] GMAIL_TOKEN_JSON env var exists:', !!tokenFromEnv);
       if (tokenFromEnv) {
         try {
           this.auth.setCredentials(JSON.parse(tokenFromEnv));
@@ -103,17 +105,22 @@ class GmailService {
 
     const { tokens } = await this.auth.getToken(code);
     this.auth.setCredentials(tokens);
-    
+
     // Store the token for future use (filesystem; for cloud consider secrets store)
     try {
       await fs.writeFile(TOKEN_PATH, JSON.stringify(tokens));
     } catch (e) {
       console.warn('Could not persist gmail-token.json to disk. For Railway, set GMAIL_TOKEN_JSON env var with token JSON.');
     }
-    
+
     this.gmail = google.gmail({ version: 'v1', auth: this.auth });
     this.calendar = google.calendar({ version: 'v3', auth: this.auth });
     return true;
+  }
+
+  // Alias for OAuth callback handling
+  async handleAuthCallback(code) {
+    return this.setAuthCode(code);
   }
 
   async getRecentEmails(maxResults = 10) {

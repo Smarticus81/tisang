@@ -48,8 +48,8 @@ async function createOpenAIRealtimeEphemeralToken() {
     throw err;
   }
 
-  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime';
-  const voice = process.env.OPENAI_VOICE || 'alloy';
+  const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-realtime-preview-2024-12-17';
+  const voice = process.env.OPENAI_VOICE || 'verse';
 
   // Mint an ephemeral client secret on the server using a standard API key.
   // The browser uses the ephemeral key to connect directly to Realtime via WebRTC.
@@ -64,6 +64,8 @@ async function createOpenAIRealtimeEphemeralToken() {
       },
     },
   };
+
+  console.log('[Server] Minting ephemeral token with config:', JSON.stringify(sessionConfig, null, 2));
 
   const resp = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
     method: 'POST',
@@ -82,19 +84,8 @@ async function createOpenAIRealtimeEphemeralToken() {
     throw err;
   }
 
-  // Support multiple possible response shapes.
-  // Typically: { client_secret: { value, expires_at }, session: {...} }
-  // Sometimes: { value, expires_at, session: {...} }
-  const token = data?.client_secret?.value ?? data?.value;
-  const expires_at = data?.client_secret?.expires_at ?? data?.expires_at;
-
-  if (!token) {
-    const err = new Error('Invalid OpenAI response: missing client_secret token');
-    err.details = data;
-    throw err;
-  }
-
-  return { token, expires_at, model, voice };
+  // Return the raw data as per the user's example
+  return data;
 }
 
 // OpenAI Realtime ephemeral token endpoint (used by the browser for WebRTC auth)
@@ -172,7 +163,7 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
             <div class="container">
               <h2>Authentication Failed</h2>
               <p>No authorization code received.</p>
-              <p><a href="/">Return to Maylah</a></p>
+              <p><a href="/">Return to Mayler</a></p>
             </div>
           </body>
         </html>
@@ -244,13 +235,13 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
                 }, 500);
               } else if (isStandalone) {
                 // PWA standalone mode - redirect back to app
-                document.getElementById('status').textContent = 'Returning to Maylah...';
+                document.getElementById('status').textContent = 'Returning to Mayler...';
                 setTimeout(() => {
                   window.location.href = '/?auth_success=true';
                 }, 800);
               } else {
                 // Regular browser - redirect
-                document.getElementById('status').textContent = 'Returning to Maylah...';
+                document.getElementById('status').textContent = 'Returning to Mayler...';
                 setTimeout(() => {
                   window.location.href = '/?auth_success=true';
                 }, 800);
@@ -288,7 +279,7 @@ app.get('/api/gmail/auth-redirect', async (req, res) => {
           <div class="container">
             <h2>Authentication Error</h2>
             <p>${error.message}</p>
-            <p><a href="/">Return to Maylah</a></p>
+            <p><a href="/">Return to Mayler</a></p>
           </div>
         </body>
       </html>
@@ -620,7 +611,7 @@ app.get('/gmail-setup', (req, res) => {
   res.send(`
     <html>
       <head>
-        <title>Maylah - Google Setup</title>
+        <title>Mayler - Google Setup</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
           body { 
@@ -666,7 +657,7 @@ app.get('/gmail-setup', (req, res) => {
         </style>
       </head>
       <body>
-        <h1 class="header">Maylah - Google Setup</h1>
+        <h1 class="header">Mayler - Google Setup</h1>
         
         <p style="text-align: center; color: rgba(255,255,255,0.6);">
           Connect your Google account to enable Gmail and Calendar features.
@@ -695,14 +686,14 @@ app.get('/gmail-setup', (req, res) => {
             <li>Configure OAuth consent screen if prompted:
               <ul>
                 <li>User Type: External</li>
-                <li>App name: "Maylah"</li>
+                <li>App name: "Mayler"</li>
                 <li>Add your email as a test user</li>
               </ul>
             </li>
             <li>Create OAuth 2.0 Client ID:
               <ul>
                 <li>Application type: "Web application"</li>
-                <li>Name: "Maylah"</li>
+                <li>Name: "Mayler"</li>
                 <li>Authorized redirect URIs: <span class="code">https://your-domain.com/api/gmail/auth-redirect</span></li>
               </ul>
             </li>
@@ -721,7 +712,7 @@ app.get('/gmail-setup', (req, res) => {
 
         <div class="step">
           <h3>Step 4: Authenticate</h3>
-          <p>Once credentials are configured, open Maylah and:</p>
+          <p>Once credentials are configured, open Mayler and:</p>
           <ul>
             <li>Tap the settings icon</li>
             <li>Tap "Connect" next to Google Account</li>
@@ -730,7 +721,7 @@ app.get('/gmail-setup', (req, res) => {
         </div>
 
         <div style="text-align: center; margin-top: 30px;">
-          <a href="/" class="button">Back to Maylah</a>
+          <a href="/" class="button">Back to Mayler</a>
           <a href="https://console.cloud.google.com/" target="_blank" class="button">Google Cloud Console</a>
         </div>
       </body>
@@ -761,6 +752,6 @@ app.get('*', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`Maylah server running on port ${PORT}`);
+  console.log(`Mayler server running on port ${PORT}`);
   geminiService.initialize(server);
 });

@@ -25,11 +25,13 @@ dist-ssr
 
 # Environment files
 .env
-**/.env
-**/*.env
+.env.local
+.env.production
 
 # Credentials (should use environment variables in production)
 **/gmail-credentials.json
 **/token.json
+**/gmail-token.json
 backend/token.json
+backend/gmail-token.json
 data/token.json

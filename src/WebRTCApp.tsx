@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import './App.css';
 
 // Type declarations
 declare global {
@@ -69,7 +68,7 @@ const similarity = (a: string, b: string) => {
   return 1 - dist / maxLen;
 };
 
-const WAKE_WORDS = ['maylah', 'may-lah', 'may lah', 'hey maylah', 'hey may-lah', 'mayla', 'maila'];
+const WAKE_WORDS = ['mayler', 'may-ler', 'may ler', 'hey mayler', 'hey may-ler', 'mailer', 'maler'];
 const wakeThreshold = 0.6;
 const sanitize = (s: string) => s.toLowerCase().replace(/[^a-z\s]/g, '').replace(/\s+/g, ' ').trim();
 
@@ -107,44 +106,44 @@ const LiquidOrb: React.FC<{
 
       ctx.clearRect(0, 0, size, size);
 
-      // Dynamic parameters based on state
+      // Dynamic parameters based on state - zen powder colors
       let waveIntensity = 0.08;
       let waveSpeed = 0.8;
-      let glowIntensity = 0.3;
-      let primaryHue = 200;
-      let secondaryHue = 260;
+      let glowIntensity = 0.2;
+      let primaryHue = 350; // Soft rose/pink
+      let secondarHue = 190; // Soft blue-grey
 
       switch (state) {
         case 'listening':
           waveIntensity = 0.12 + audioLevel * 0.15;
           waveSpeed = 1.2;
-          glowIntensity = 0.5 + audioLevel * 0.3;
-          primaryHue = 180;
-          secondaryHue = 220;
+          glowIntensity = 0.3 + audioLevel * 0.2;
+          primaryHue = 355; // Powder pink
+          secondaryHue = 185; // Powder blue
           break;
         case 'thinking':
           waveIntensity = 0.1;
           waveSpeed = 2;
-          glowIntensity = 0.4;
-          primaryHue = 260;
-          secondaryHue = 300;
+          glowIntensity = 0.25;
+          primaryHue = 140; // Soft green
+          secondaryHue = 180; // Soft aqua
           break;
         case 'speaking':
           waveIntensity = 0.15 + audioLevel * 0.25;
           waveSpeed = 1.5;
-          glowIntensity = 0.6 + audioLevel * 0.4;
-          primaryHue = 170;
-          secondaryHue = 200;
+          glowIntensity = 0.35 + audioLevel * 0.3;
+          primaryHue = 350; // Rose
+          secondaryHue = 195; // Sky blue
           break;
       }
 
-      // Outer glow layers
+      // Outer glow layers - soft diffuse powder effect
       for (let i = 4; i >= 0; i--) {
         const glowRadius = baseRadius + 30 + i * 15;
-        const alpha = (glowIntensity * 0.08) * (1 - i * 0.15);
+        const alpha = (glowIntensity * 0.06) * (1 - i * 0.15);
         const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
-        gradient.addColorStop(0, `hsla(${primaryHue}, 60%, 70%, ${alpha})`);
-        gradient.addColorStop(0.5, `hsla(${secondaryHue}, 50%, 60%, ${alpha * 0.5})`);
+        gradient.addColorStop(0, `hsla(${primaryHue}, 35%, 85%, ${alpha})`);
+        gradient.addColorStop(0.5, `hsla(${secondaryHue}, 30%, 80%, ${alpha * 0.5})`);
         gradient.addColorStop(1, 'transparent');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, size, size);
@@ -157,13 +156,13 @@ const LiquidOrb: React.FC<{
       const points = 120;
       for (let i = 0; i <= points; i++) {
         const angle = (i / points) * Math.PI * 2;
-        
+
         // Multiple wave layers for liquid effect
         const wave1 = Math.sin(angle * 3 + t * waveSpeed) * baseRadius * waveIntensity;
         const wave2 = Math.sin(angle * 5 - t * waveSpeed * 1.3) * baseRadius * waveIntensity * 0.5;
         const wave3 = Math.sin(angle * 7 + t * waveSpeed * 0.7) * baseRadius * waveIntensity * 0.3;
         const wave4 = Math.cos(angle * 2 + t * waveSpeed * 1.1) * baseRadius * waveIntensity * 0.4;
-        
+
         const radius = baseRadius + wave1 + wave2 + wave3 + wave4;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius;
@@ -176,21 +175,21 @@ const LiquidOrb: React.FC<{
       }
       ctx.closePath();
 
-      // Glass gradient fill
+      // Glass gradient fill - zen powder effect
       const glassGradient = ctx.createRadialGradient(
         centerX - 20, centerY - 30, 0,
         centerX, centerY, baseRadius + 20
       );
-      glassGradient.addColorStop(0, `hsla(${primaryHue}, 30%, 95%, 0.9)`);
-      glassGradient.addColorStop(0.3, `hsla(${primaryHue}, 40%, 80%, 0.6)`);
-      glassGradient.addColorStop(0.6, `hsla(${secondaryHue}, 50%, 60%, 0.4)`);
-      glassGradient.addColorStop(1, `hsla(${secondaryHue}, 60%, 40%, 0.2)`);
+      glassGradient.addColorStop(0, `hsla(${primaryHue}, 20%, 98%, 0.95)`);
+      glassGradient.addColorStop(0.3, `hsla(${primaryHue}, 25%, 90%, 0.8)`);
+      glassGradient.addColorStop(0.6, `hsla(${secondaryHue}, 20%, 85%, 0.6)`);
+      glassGradient.addColorStop(1, `hsla(${secondaryHue}, 25%, 80%, 0.4)`);
       ctx.fillStyle = glassGradient;
       ctx.fill();
 
-      // Glass border
-      ctx.strokeStyle = `hsla(${primaryHue}, 50%, 80%, 0.3)`;
-      ctx.lineWidth = 1.5;
+      // Glass border - subtle
+      ctx.strokeStyle = `hsla(${primaryHue}, 30%, 75%, 0.15)`;
+      ctx.lineWidth = 1;
       ctx.stroke();
       ctx.restore();
 
@@ -210,18 +209,22 @@ const LiquidOrb: React.FC<{
       ctx.fill();
       ctx.restore();
 
-      // Soundwave rings when speaking or listening
+      // Soundwave rings when speaking or listening - subtle powder effect
       if (state === 'speaking' || state === 'listening') {
         const numRings = 3;
         for (let i = 0; i < numRings; i++) {
           const ringProgress = ((t * 0.5 + i * 0.33) % 1);
           const ringRadius = baseRadius + ringProgress * 60;
+<<<<<<< HEAD
           const ringAlpha = (1 - ringProgress) * 0.3 * (state === 'speaking' ? audioLevel + 0.3 : 0.5);
-          
+=======
+          const ringAlpha = (1 - ringProgress) * 0.15 * (state === 'speaking' ? audioLevel + 0.2 : 0.3);
+>>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
+
           ctx.beginPath();
           ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
-          ctx.strokeStyle = `hsla(${primaryHue}, 60%, 70%, ${ringAlpha})`;
-          ctx.lineWidth = 2 - ringProgress * 1.5;
+          ctx.strokeStyle = `hsla(${primaryHue}, 30%, 80%, ${ringAlpha})`;
+          ctx.lineWidth = 1.5 - ringProgress * 1;
           ctx.stroke();
         }
       }
@@ -326,7 +329,7 @@ const WebRTCApp: React.FC = () => {
       console.error('Failed to create AudioContext:', error);
     }
     return () => {
-      audioContextRef.current?.close().catch(() => {});
+      audioContextRef.current?.close().catch(() => { });
     };
   }, []);
 
@@ -344,62 +347,65 @@ const WebRTCApp: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    checkGoogleStatus();
+    const initAuth = async () => {
+      await checkGoogleStatus();
 
-    // Handle OAuth callback for PWA
-    const urlParams = new URLSearchParams(window.location.search);
-    const authSuccess = urlParams.get('auth_success');
-    if (authSuccess === 'true') {
-      setGoogleStatus('available');
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [checkGoogleStatus]);
+      // Handle OAuth callback for PWA
+      const urlParams = new URLSearchParams(window.location.search);
+      const authSuccess = urlParams.get('auth_success');
+      if (authSuccess === 'true') {
+        setGoogleStatus('available');
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else {
+        // Automatically open OAuth window on first load if not authenticated
+        const status = await fetch('/api/gmail/status').then(r => r.json()).catch(() => ({ authenticated: false }));
+        if (!status.authenticated) {
+          triggerGoogleAuth();
+        }
+      }
+    };
+
+    initAuth();
+  }, [checkGoogleStatus, triggerGoogleAuth]);
 
   // PWA-compatible OAuth trigger
   const triggerGoogleAuth = useCallback(async () => {
+    console.log('[OAuth] triggerGoogleAuth called');
     try {
+      console.log('[OAuth] Fetching auth URL from /api/gmail/auth-url');
       const response = await fetch('/api/gmail/auth-url');
       const data = await response.json();
-      
-      if (data.authUrl) {
-        // Check if running as PWA standalone
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-          ((window.navigator as Navigator & { standalone?: boolean }).standalone === true) ||
-          document.referrer.includes('android-app://');
-        
-        if (isStandalone) {
-          // For PWA: redirect in same window, will redirect back after auth
-          window.location.href = data.authUrl;
-        } else {
-          // For browser: use popup
-          const width = 500;
-          const height = 600;
-          const left = (window.screen.width - width) / 2;
-          const top = (window.screen.height - height) / 2;
-          
-          const popup = window.open(
-            data.authUrl,
-            'GoogleAuth',
-            `width=${width},height=${height},top=${top},left=${left}`
-          );
-          
-          // Poll for popup close
-          const checkPopup = setInterval(async () => {
-            if (popup?.closed) {
-              clearInterval(checkPopup);
-              await checkGoogleStatus();
-            }
-          }, 1000);
-          
-          setTimeout(() => clearInterval(checkPopup), 120000);
-        }
+      console.log('[OAuth] Response:', { ok: response.ok, status: response.status, data });
+
+      if (!response.ok) {
+        console.error('Failed to get auth URL:', data);
+        setError(data.error || 'Failed to initiate Google authentication');
+        return;
       }
-    } catch (err) {
-      console.error('Failed to start auth:', err);
-      setError('Failed to start authentication');
+
+      if (data.authUrl) {
+        console.log('[OAuth] Opening popup with URL:', data.authUrl);
+        // Open in a new window/tab
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        const popup = window.open(
+          data.authUrl,
+          'Google Authentication',
+          `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+        console.log('[OAuth] Popup opened:', popup);
+      } else {
+        console.error('[OAuth] No authUrl in response');
+      }
+    } catch (error) {
+      console.error('Error triggering Google auth:', error);
+      setError('Failed to initiate Google authentication');
     }
-  }, [checkGoogleStatus]);
+  }, []);
 
   const pushMessage = useCallback((msg: Omit<ChatMessage, 'id'>) => {
     setMessages((prev) => {
@@ -439,6 +445,26 @@ const WebRTCApp: React.FC = () => {
       case 'google_auth_setup': {
         const resp = await fetch('/api/gmail/auth-url');
         const data = await safeJson(resp);
+
+        if (resp.ok && data.authUrl) {
+          // Open in a new window/tab
+          const width = 600;
+          const height = 700;
+          const left = window.screenX + (window.outerWidth - width) / 2;
+          const top = window.screenY + (window.outerHeight - height) / 2;
+
+          window.open(
+            data.authUrl,
+            'Google Authentication',
+            `width=${width},height=${height},left=${left},top=${top},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`
+          );
+
+          return {
+            success: true,
+            message: 'Opening Google authentication window. Please complete the authorization process.'
+          };
+        }
+
         return data;
       }
       case 'create_calendar_event': {
@@ -579,6 +605,12 @@ const WebRTCApp: React.FC = () => {
     }
 
     const result = await runTool(name, args);
+
+    // Trigger OAuth window when AI calls google_auth_setup
+    if (name === 'google_auth_setup') {
+      triggerGoogleAuth();
+    }
+
     sendEvent({
       type: 'conversation.item.create',
       item: {
@@ -588,13 +620,33 @@ const WebRTCApp: React.FC = () => {
       },
     });
     sendEvent({ type: 'response.create' });
-  }, [runTool, sendEvent]);
+  }, [runTool, sendEvent, triggerGoogleAuth]);
 
   const configureSession = useCallback(() => {
     sendEvent({
       type: 'session.update',
       session: {
+<<<<<<< HEAD
+        type: 'realtime',
         instructions: `You are Maylah, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.`,
+        output_modalities: ['audio'],
+        audio: {
+          input: {
+            transcription: { model: 'gpt-4o-mini-transcribe' },
+            turn_detection: {
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 600,
+            },
+          },
+          output: {
+            voice: 'alloy',
+          },
+=======
+        instructions: `You are Mayler, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.
+
+IMPORTANT: When you call the google_auth_setup function, it will automatically open an OAuth window for the user to authenticate. You should tell the user that a window is opening for them to sign in to their Google account.`,
         modalities: ['text', 'audio'],
         voice: 'alloy',
         input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
@@ -603,9 +655,10 @@ const WebRTCApp: React.FC = () => {
           threshold: 0.5,
           prefix_padding_ms: 300,
           silence_duration_ms: 600,
+>>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
         },
         tools: [
-          { type: 'function', name: 'google_auth_setup', description: 'Initiates Google authentication for Gmail and Calendar access when the user asks to connect or set up their Google account, Gmail, or Calendar.', parameters: { type: 'object', properties: {} } },
+          { type: 'function', name: 'google_auth_setup', description: 'Opens an OAuth window for the user to authenticate with Google, granting access to Gmail and Calendar. Call this when the user wants to connect their Google account. The window will open automatically.', parameters: { type: 'object', properties: {} } },
           {
             type: 'function',
             name: 'create_calendar_event',
@@ -676,11 +729,11 @@ const WebRTCApp: React.FC = () => {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       const ctx = new Ctx();
       remoteAudioCtxRef.current = ctx;
-    const source = ctx.createMediaStreamSource(remoteStreamRef.current);
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-    source.connect(analyser);
-    remoteAnalyserRef.current = analyser;
+      const source = ctx.createMediaStreamSource(remoteStreamRef.current);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      remoteAnalyserRef.current = analyser;
 
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       remoteLevelIntervalRef.current = window.setInterval(() => {
@@ -702,7 +755,7 @@ const WebRTCApp: React.FC = () => {
     }
     remoteAnalyserRef.current = null;
     if (remoteAudioCtxRef.current) {
-      remoteAudioCtxRef.current.close().catch(() => {});
+      remoteAudioCtxRef.current.close().catch(() => { });
       remoteAudioCtxRef.current = null;
     }
   }, []);
@@ -717,7 +770,16 @@ const WebRTCApp: React.FC = () => {
       const tokenResp = await fetch('/api/token', { method: 'POST' });
       const tokenJson = (await tokenResp.json().catch(() => null)) as unknown;
       const tokenData = asObject(tokenJson);
-      const token = tokenData ? asString(tokenData.token) : null;
+
+      // Robustly handle the ephemeral token structure
+      // OpenAI typically returns { client_secret: { value: "...", ... } }
+      // But example doc showed { value: "..." }
+      let token: string | null = null;
+      if (tokenData) {
+        const clientSecret = asObject(tokenData.client_secret);
+        token = clientSecret ? asString(clientSecret.value) : asString(tokenData.value);
+      }
+
       if (!tokenResp.ok || !token) {
         const errMsg = tokenData ? asString(tokenData.error) : null;
         throw new Error(errMsg || 'Failed to get realtime token');
@@ -735,15 +797,30 @@ const WebRTCApp: React.FC = () => {
         configureSession();
         if (shouldGreetOnConnectRef.current) {
           shouldGreetOnConnectRef.current = false;
+<<<<<<< HEAD
+          // Wait for session to be configured before greeting
+          setTimeout(() => {
+            sendEvent({
+              type: 'conversation.item.create',
+              item: {
+                type: 'message',
+                role: 'user',
+                content: [{ type: 'input_text', text: 'Hey Maylah' }],
+              },
+            });
+            sendEvent({ type: 'response.create' });
+          }, 500);
+=======
           sendEvent({
             type: 'conversation.item.create',
             item: {
               type: 'message',
               role: 'user',
-              content: [{ type: 'input_text', text: 'Hey Maylah' }],
+              content: [{ type: 'input_text', text: 'Hey Mayler' }],
             },
           });
           sendEvent({ type: 'response.create' });
+>>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
         }
       };
 
@@ -777,9 +854,8 @@ const WebRTCApp: React.FC = () => {
           return;
         }
         if (t === 'input_audio_buffer.speech_stopped') {
-          setListening(true);
-          // Ensure a response is generated for each turn
-          sendEvent({ type: 'response.create' });
+          setListening(false);
+          // Server VAD automatically triggers response, no need to send response.create
           return;
         }
 
@@ -917,6 +993,7 @@ const WebRTCApp: React.FC = () => {
       const offer = await pc.createOffer({ offerToReceiveAudio: true });
       await pc.setLocalDescription(offer);
 
+      // Using /v1/realtime/calls without model param since it's in the token
       const answerResp = await fetch('https://api.openai.com/v1/realtime/calls', {
         method: 'POST',
         headers: {
@@ -1001,7 +1078,7 @@ const WebRTCApp: React.FC = () => {
         setShowAudioHint(true);
       }
     }
-    
+
     shouldGreetOnConnectRef.current = true;
     connectToOpenAIRealtime();
   }, [connectToOpenAIRealtime]);
@@ -1088,7 +1165,7 @@ const WebRTCApp: React.FC = () => {
   else if (listening) orbState = 'listening';
 
   return (
-    <div className="maylah-container">
+    <div className="mayler-container">
       {/* Ambient background */}
       <div className="ambient-bg" />
       <div className="glass-overlay" />
@@ -1109,9 +1186,13 @@ const WebRTCApp: React.FC = () => {
           <span className="status-dot" />
           <span className="status-text">{connected ? 'Connected' : 'Ready'}</span>
         </div>
-        <button 
+        <button
           className="settings-btn"
-          onClick={() => setShowSettings(!showSettings)}
+          onClick={() => {
+            console.log('[Settings] Button clicked, current showSettings:', showSettings);
+            setShowSettings(!showSettings);
+            console.log('[Settings] Setting showSettings to:', !showSettings);
+          }}
           aria-label="Settings"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -1126,10 +1207,10 @@ const WebRTCApp: React.FC = () => {
         <div className="settings-panel">
           <div className="settings-content">
             <h3>Settings</h3>
-            
+
             <div className="setting-item">
               <span>Wake Word Detection</span>
-              <button 
+              <button
                 className={`toggle-btn ${wakeWordEnabled ? 'active' : ''}`}
                 onClick={() => {
                   const next = !wakeWordEnabled;
@@ -1144,9 +1225,12 @@ const WebRTCApp: React.FC = () => {
 
             <div className="setting-item">
               <span>Google Account</span>
-              <button 
+              <button
                 className={`toggle-btn ${googleStatus === 'available' ? 'active' : ''}`}
-                onClick={triggerGoogleAuth}
+                onClick={() => {
+                  console.log('[Button] Google Account Connect button clicked');
+                  triggerGoogleAuth();
+                }}
               >
                 {googleStatus === 'available' ? 'Connected' : 'Connect'}
               </button>
@@ -1163,14 +1247,72 @@ const WebRTCApp: React.FC = () => {
       <main className="main-content">
         {/* Logo/Name */}
         <div className="brand">
-          <h1 className="brand-name">maylah</h1>
+          <h1 className="brand-name">mayler</h1>
         </div>
 
         {/* Orb visualization */}
-        <LiquidOrb state={orbState} audioLevel={audioLevel} />
+        <div className="orb-container">
+          <div className={`zen-orb ${orbState === 'listening' || orbState === 'speaking' ? 'listening' : ''}`}>
+            <div className="waveform-container">
+              <div className="waveform">
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+                <div className="wave-bar"></div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Transcript area */}
         <div className="transcript-area">
+<<<<<<< HEAD
+          {(() => {
+            const cleanText = (text: string) => {
+              let cleaned = text.replace(/https?:\/\/[^\s]+/g, '[link]');
+              if (cleaned.length > 150) {
+                cleaned = cleaned.substring(0, 150) + '...';
+              }
+              return cleaned;
+            };
+
+            if (error) {
+              const errorMsg = error.includes('http') ? 'Connection error. Please try again.' : error;
+              return <TranscriptDisplay text={cleanText(errorMsg)} type="system" />;
+            }
+            if (agentInterimTranscript) {
+              return <TranscriptDisplay text={cleanText(agentInterimTranscript)} type="agent" isInterim />;
+            }
+            if (agentTranscript) {
+              return <TranscriptDisplay text={cleanText(agentTranscript)} type="agent" />;
+            }
+            if (interimTranscript) {
+              return <TranscriptDisplay text={cleanText(interimTranscript)} type="user" isInterim />;
+            }
+            if (transcript) {
+              return <TranscriptDisplay text={cleanText(transcript)} type="user" />;
+            }
+            return (
+              <TranscriptDisplay
+                text={
+                  listening
+                    ? "Listening..."
+                    : speaking
+                      ? "Speaking..."
+                      : loading
+                        ? "Connecting..."
+                        : connected
+                          ? "Ready"
+                          : "Tap to start"
+                }
+                type="system"
+              />
+            );
+          })()}
+=======
           {error ? (
             <TranscriptDisplay text={error} type="system" />
           ) : agentInterimTranscript ? (
@@ -1191,7 +1333,7 @@ const WebRTCApp: React.FC = () => {
                     : loading 
                       ? "Connecting..." 
                       : wakeWordEnabled 
-                        ? 'Say "Maylah" to start' 
+                        ? 'Say "Mayler" to start' 
                         : "Tap to start"
               } 
               type="system" 
@@ -1204,6 +1346,7 @@ const WebRTCApp: React.FC = () => {
               ))}
             </div>
           )}
+>>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
         </div>
       </main>
 
