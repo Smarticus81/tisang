@@ -215,11 +215,7 @@ const LiquidOrb: React.FC<{
         for (let i = 0; i < numRings; i++) {
           const ringProgress = ((t * 0.5 + i * 0.33) % 1);
           const ringRadius = baseRadius + ringProgress * 60;
-<<<<<<< HEAD
           const ringAlpha = (1 - ringProgress) * 0.3 * (state === 'speaking' ? audioLevel + 0.3 : 0.5);
-=======
-          const ringAlpha = (1 - ringProgress) * 0.15 * (state === 'speaking' ? audioLevel + 0.2 : 0.3);
->>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
 
           ctx.beginPath();
           ctx.arc(centerX, centerY, ringRadius, 0, Math.PI * 2);
@@ -626,7 +622,6 @@ const WebRTCApp: React.FC = () => {
     sendEvent({
       type: 'session.update',
       session: {
-<<<<<<< HEAD
         type: 'realtime',
         instructions: `You are Maylah, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.`,
         output_modalities: ['audio'],
@@ -643,19 +638,6 @@ const WebRTCApp: React.FC = () => {
           output: {
             voice: 'alloy',
           },
-=======
-        instructions: `You are Mayler, a laid-back but professional AI assistant. You're calm, collected, and genuinely helpful without being overly enthusiastic. Think of yourself as a knowledgeable friend who happens to be really good at getting things done. You speak naturally, use casual language when appropriate, but maintain professionalism when handling important tasks. You don't use excessive exclamation points or overly cheerful language. You're confident, direct, and occasionally have a dry sense of humor. When helping with tasks, you're thorough but not verbose.
-
-IMPORTANT: When you call the google_auth_setup function, it will automatically open an OAuth window for the user to authenticate. You should tell the user that a window is opening for them to sign in to their Google account.`,
-        modalities: ['text', 'audio'],
-        voice: 'alloy',
-        input_audio_transcription: { model: 'gpt-4o-mini-transcribe' },
-        turn_detection: {
-          type: 'server_vad',
-          threshold: 0.5,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 600,
->>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
         },
         tools: [
           { type: 'function', name: 'google_auth_setup', description: 'Opens an OAuth window for the user to authenticate with Google, granting access to Gmail and Calendar. Call this when the user wants to connect their Google account. The window will open automatically.', parameters: { type: 'object', properties: {} } },
@@ -1269,7 +1251,6 @@ IMPORTANT: When you call the google_auth_setup function, it will automatically o
 
         {/* Transcript area */}
         <div className="transcript-area">
-<<<<<<< HEAD
           {(() => {
             const cleanText = (text: string) => {
               let cleaned = text.replace(/https?:\/\/[^\s]+/g, '[link]');
@@ -1312,41 +1293,6 @@ IMPORTANT: When you call the google_auth_setup function, it will automatically o
               />
             );
           })()}
-=======
-          {error ? (
-            <TranscriptDisplay text={error} type="system" />
-          ) : agentInterimTranscript ? (
-            <TranscriptDisplay text={agentInterimTranscript} type="agent" isInterim />
-          ) : agentTranscript ? (
-            <TranscriptDisplay text={agentTranscript} type="agent" />
-          ) : interimTranscript ? (
-            <TranscriptDisplay text={interimTranscript} type="user" isInterim />
-          ) : transcript ? (
-            <TranscriptDisplay text={transcript} type="user" />
-          ) : (
-            <TranscriptDisplay 
-              text={
-                listening 
-                  ? "I'm listening..." 
-                  : speaking 
-                    ? "" 
-                    : loading 
-                      ? "Connecting..." 
-                      : wakeWordEnabled 
-                        ? 'Say "Mayler" to start' 
-                        : "Tap to start"
-              } 
-              type="system" 
-            />
-          )}
-          {messages.length > 0 && (
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {messages.slice(-6).map((m) => (
-                <TranscriptDisplay key={m.id} text={m.text} type={m.type} />
-              ))}
-            </div>
-          )}
->>>>>>> 6ff23402cc3b46bede5412de6539cdf4c39ca69b
         </div>
       </main>
 
